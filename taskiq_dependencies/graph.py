@@ -1,15 +1,10 @@
 import inspect
 from collections import defaultdict, deque
 from graphlib import TopologicalSorter
-from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
-
-from typing_extensions import ParamSpec
+from typing import Any, Callable, Dict, List, Optional, get_type_hints
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
-
-_Params = ParamSpec("_Params")
-_Return = TypeVar("_Return")
 
 
 class DependencyGraph:

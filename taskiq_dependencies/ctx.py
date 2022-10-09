@@ -4,7 +4,7 @@ from copy import copy
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 if TYPE_CHECKING:
-    from taskiq_dependencies.graph import DependencyGraph
+    from taskiq_dependencies.graph import DependencyGraph  # pragma: no cover
 
 
 class BaseResolveContext:
@@ -71,6 +71,7 @@ class BaseResolveContext:
                     # we resolve it's dependencies and
                     # run it.
                     resolved_kwargs = yield self.graph.subgraphs[subdep]
+                    # Subgraph wasn't resolved.
                     if resolved_kwargs is None:
                         continue
                     if subdep.kwargs:

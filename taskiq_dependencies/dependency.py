@@ -21,7 +21,7 @@ def Depends(  # noqa: WPS234
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
-) -> _T:
+) -> _T:  # pragma: no cover
     ...
 
 
@@ -31,7 +31,7 @@ def Depends(  # noqa: WPS234
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
-) -> _T:
+) -> _T:  # pragma: no cover
     ...
 
 
@@ -41,7 +41,7 @@ def Depends(
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
-) -> _T:
+) -> _T:  # pragma: no cover
     ...
 
 
@@ -51,7 +51,7 @@ def Depends(  # noqa: WPS234
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
-) -> _T:
+) -> _T:  # pragma: no cover
     ...
 
 
@@ -61,7 +61,7 @@ def Depends(
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
-) -> _T:
+) -> _T:  # pragma: no cover
     ...
 
 

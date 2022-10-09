@@ -237,3 +237,24 @@ async def test_initial_ctx() -> None:
 
     async with DependencyGraph(target).async_ctx({TeCtx: TeCtx(val)}) as actx:
         assert await actx.resolve_kwargs() == {"test": True}
+
+
+def test_unknown_dependency_func() -> None:
+    """Tests that error is raised for unknown deps."""
+
+    def target(dep=Depends()) -> None:  # type: ignore
+        pass
+
+    with pytest.raises(ValueError):
+        DependencyGraph(target)
+
+
+def test_unknown_dependency_class() -> None:
+    """Tests that error is raised for unknown deps."""
+
+    class Target:
+        def __init__(self, dep=Depends()) -> None:  # type: ignore
+            pass
+
+    with pytest.raises(ValueError):
+        DependencyGraph(Target)
