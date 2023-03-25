@@ -6,6 +6,11 @@ from typing import Any, Callable, Dict, List, Optional, get_type_hints
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
 
+try:
+    from fastapi.params import Depends as FastapiDepends  # noqa: WPS433
+except ImportError:
+    FastapiDepends = None  # type: ignore
+
 
 class DependencyGraph:
     """Class to build dependency graph from a function."""
@@ -103,6 +108,19 @@ class DependencyGraph:
             # find all parameters, that have TaskiqDepends as it's
             # default vaule.
             for param_name, param in sign.parameters.items():
+                default_value = param.default
+
+                # This is for FastAPI integration. So you can
+                # use Depends from taskiq mixed with fastapi's dependencies.
+                if FastapiDepends is not None and isinstance(  # noqa: WPS337
+                    default_value,
+                    FastapiDepends,
+                ):
+                    default_value = Dependency(
+                        dependency=default_value.dependency,
+                        use_cache=default_value.use_cache,
+                    )
+
                 # We check, that default value is an instance of
                 # TaskiqDepends.
                 if not isinstance(param.default, Dependency):
