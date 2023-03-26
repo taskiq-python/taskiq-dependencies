@@ -1,3 +1,4 @@
+import uuid
 from typing import (  # noqa: WPS235
     Any,
     AsyncGenerator,
@@ -107,13 +108,14 @@ class Dependency:
         use_cache: bool = True,
         kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
+        self._id = uuid.uuid4()
         self.dependency = dependency
         self.use_cache = use_cache
         self.param_name = ""
         self.kwargs = kwargs or {}
 
     def __hash__(self) -> int:
-        return hash((self.dependency, self.use_cache, tuple(self.kwargs.keys())))
+        return hash(self._id)
 
     def __eq__(self, rhs: object) -> bool:
         """
@@ -127,8 +129,4 @@ class Dependency:
         """
         if not isinstance(rhs, Dependency):
             return False
-        return (self.dependency, self.use_cache, self.kwargs) == (
-            rhs.dependency,
-            rhs.use_cache,
-            rhs.kwargs,
-        )
+        return self._id == rhs._id  # noqa: WPS437
