@@ -123,13 +123,13 @@ class DependencyGraph:
 
                 # We check, that default value is an instance of
                 # TaskiqDepends.
-                if not isinstance(param.default, Dependency):
+                if not isinstance(default_value, Dependency):
                     continue
 
                 # If user haven't set the dependency,
                 # using TaskiqDepends constructor,
                 # we need to find variable's type hint.
-                if param.default.dependency is None:
+                if default_value.dependency is None:
                     if hints.get(param_name) is None:
                         # In this case, we don't know anything
                         # about this dependency. And it cannot be resolved.
@@ -150,14 +150,14 @@ class DependencyGraph:
                 else:
                     # We can get dependency by simply using
                     # user supplied function.
-                    dependency_func = param.default.dependency
+                    dependency_func = default_value.dependency
 
                 # Now we construct new TaskiqDepends instance
                 # with correct dependency function and cache.
                 dep_obj = Dependency(
                     dependency_func,
-                    use_cache=param.default.use_cache,
-                    kwargs=param.default.kwargs,
+                    use_cache=default_value.use_cache,
+                    kwargs=default_value.kwargs,
                 )
                 # Also we set the parameter name,
                 # it will help us in future when
