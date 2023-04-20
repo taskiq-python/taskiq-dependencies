@@ -290,3 +290,23 @@ def test_param_info_no_dependant() -> None:
     info: ParamInfo = kwargs["info"]
     assert info.name == ""
     assert info.definition is None
+
+
+def test_class_based_dependencies() -> None:
+    """Tests that if ParamInfo is used on the target, no error is raised."""
+
+    class TeClass:
+        def __init__(self, return_val: str) -> None:
+            self.return_val = return_val
+
+        def __call__(self) -> str:
+            return self.return_val
+
+    def target(class_val: str = Depends(TeClass("tval"))) -> None:
+        return None
+
+    with DependencyGraph(target=target).sync_ctx() as g:
+        kwargs = g.resolve_kwargs()
+
+    info: str = kwargs["class_val"]
+    assert info == "tval"

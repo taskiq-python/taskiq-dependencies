@@ -100,9 +100,13 @@ class DependencyGraph:
                 # If this is a class, we need to get signature of
                 # an __init__ method.
                 hints = get_type_hints(dep.dependency.__init__)  # noqa: WPS609
-            else:
-                # If this is function, we get it's type hints.
+            elif inspect.isfunction(dep.dependency):
+                # If this is function or an instance of a class, we get it's type hints.
                 hints = get_type_hints(dep.dependency)
+            else:
+                hints = get_type_hints(
+                    dep.dependency.__call__,  # type: ignore # noqa: WPS609
+                )
 
             # Now we need to iterate over parameters, to
             # find all parameters, that have TaskiqDepends as it's
