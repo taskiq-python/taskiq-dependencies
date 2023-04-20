@@ -97,3 +97,31 @@ with graph.sync_ctx({DefaultDep: DefaultDep()}) as ctx:
 ```
 
 You can run this code. It will resolve dd dependency into a `DefaultDep` variable you provide.
+
+
+## Getting parameters information
+
+If you want to get the information about how this dependency was specified,
+you can use special class `ParamInfo` for that.
+
+```python
+from taskiq_dependencies import Depends, DependencyGraph, ParamInfo
+
+
+def dependency(info: ParamInfo = Depends()) -> str:
+    assert info.name == "dd"
+    return info.name
+
+def target_func(dd: str = Depends(dependency)):
+    print(dd)
+    return 1
+
+
+graph = DependencyGraph(target_func)
+
+with graph.sync_ctx() as ctx:
+    print(ctx.resolve_kwargs())
+
+```
+
+The ParamInfo has the information about name and parameters signature. It's useful if you want to create a dependency that changes based on parameter name, or signature.

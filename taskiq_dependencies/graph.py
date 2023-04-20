@@ -119,6 +119,7 @@ class DependencyGraph:
                     default_value = Dependency(
                         dependency=default_value.dependency,
                         use_cache=default_value.use_cache,
+                        signature=param,
                     )
 
                 # We check, that default value is an instance of
@@ -158,6 +159,7 @@ class DependencyGraph:
                     dependency_func,
                     use_cache=default_value.use_cache,
                     kwargs=default_value.kwargs,
+                    signature=param,
                 )
                 # Also we set the parameter name,
                 # it will help us in future when
