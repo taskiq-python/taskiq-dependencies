@@ -1,3 +1,4 @@
+import inspect
 import uuid
 from typing import (  # noqa: WPS235
     Any,
@@ -107,12 +108,14 @@ class Dependency:
         *,
         use_cache: bool = True,
         kwargs: Optional[Dict[str, Any]] = None,
+        signature: Optional[inspect.Parameter] = None,
     ) -> None:
         self._id = uuid.uuid4()
         self.dependency = dependency
         self.use_cache = use_cache
         self.param_name = ""
         self.kwargs = kwargs or {}
+        self.signature = signature
 
     def __hash__(self) -> int:
         return hash(self._id)

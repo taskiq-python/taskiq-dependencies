@@ -3,6 +3,8 @@ import inspect
 from copy import copy
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
+from taskiq_dependencies.utils import ParamInfo
+
 if TYPE_CHECKING:
     from taskiq_dependencies.graph import DependencyGraph  # pragma: no cover
 
@@ -62,6 +64,11 @@ class BaseResolveContext:
                 # we skip it.
                 if subdep.dependency is None:
                     continue
+                # If the user want to get ParamInfo,
+                # we get declaration of the current dependency.
+                if subdep.dependency == ParamInfo:
+                    kwargs[subdep.param_name] = ParamInfo(dep.param_name, dep.signature)
+                    continue
                 if subdep.use_cache:
                     # If this dependency can be calculated, using cache,
                     # we try to get it from cache.
@@ -82,7 +89,12 @@ class BaseResolveContext:
 
             # We don't want to calculate least function,
             # Because it's a target function.
-            if index < len(self.graph.ordered_deps) - 1:
+            if (  # noqa: WPS337
+                index < len(self.graph.ordered_deps) - 1
+                # We skip all ParamInfo dependencies,
+                # because we calculate them when needed.
+                and dep.dependency != ParamInfo
+            ):
                 user_kwargs = dep.kwargs
                 user_kwargs.update(kwargs)
                 cache[dep.dependency] = yield dep.dependency(**user_kwargs)
