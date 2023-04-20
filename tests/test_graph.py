@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Generator
 
 import pytest
 
-from taskiq_dependencies import DependencyGraph, Depends
+from taskiq_dependencies import DependencyGraph, Depends, ParamInfo
 
 
 @pytest.mark.anyio
@@ -258,3 +258,35 @@ def test_unknown_dependency_class() -> None:
 
     with pytest.raises(ValueError):
         DependencyGraph(Target)
+
+
+def test_get_param_info() -> None:
+    """Tests that param info resolved correctly."""
+
+    def dep(info: ParamInfo = Depends()) -> ParamInfo:
+        return info
+
+    def target(my_test_param: ParamInfo = Depends(dep)) -> None:
+        return None
+
+    with DependencyGraph(target=target).sync_ctx() as g:
+        kwargs = g.resolve_kwargs()
+
+    info: ParamInfo = kwargs["my_test_param"]
+    assert info.name == "my_test_param"
+    assert info.definition
+    assert info.definition.annotation == ParamInfo
+
+
+def test_param_info_no_dependant() -> None:
+    """Tests that if ParamInfo is used on the target, no error is raised."""
+
+    def target(info: ParamInfo = Depends()) -> None:
+        return None
+
+    with DependencyGraph(target=target).sync_ctx() as g:
+        kwargs = g.resolve_kwargs()
+
+    info: ParamInfo = kwargs["info"]
+    assert info.name == ""
+    assert info.definition is None
