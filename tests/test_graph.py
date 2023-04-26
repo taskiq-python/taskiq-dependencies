@@ -310,3 +310,93 @@ def test_class_based_dependencies() -> None:
 
     info: str = kwargs["class_val"]
     assert info == "tval"
+
+
+def test_exception_generators() -> None:
+
+    errors_found = 0
+
+    def my_generator() -> Generator[int, None, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+
+    def target(_: int = Depends(my_generator)) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        with DependencyGraph(target=target).sync_ctx() as g:
+            target(**g.resolve_kwargs())
+
+    assert errors_found == 1
+
+
+@pytest.mark.anyio
+async def test_async_exception_generators() -> None:
+
+    errors_found = 0
+
+    async def my_generator() -> AsyncGenerator[int, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+
+    def target(_: int = Depends(my_generator)) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        async with DependencyGraph(target=target).async_ctx() as g:
+            target(**(await g.resolve_kwargs()))
+
+    assert errors_found == 1
+
+
+@pytest.mark.anyio
+async def test_async_exception_generators_multiple() -> None:
+
+    errors_found = 0
+
+    async def my_generator() -> AsyncGenerator[int, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+
+    def target(
+        _a: int = Depends(my_generator, use_cache=False),
+        _b: int = Depends(my_generator, use_cache=False),
+        _c: int = Depends(my_generator, use_cache=False),
+    ) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        async with DependencyGraph(target=target).async_ctx() as g:
+            target(**(await g.resolve_kwargs()))
+
+    assert errors_found == 3
+
+
+@pytest.mark.anyio
+async def test_async_exception_generators_no_propogation() -> None:
+
+    errors_found = 0
+
+    async def my_generator() -> AsyncGenerator[int, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+            raise Exception()
+
+    def target(_: int = Depends(my_generator)) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        async with DependencyGraph(target=target).async_ctx() as g:
+            target(**(await g.resolve_kwargs()))
