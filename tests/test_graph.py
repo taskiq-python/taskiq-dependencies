@@ -382,7 +382,7 @@ async def test_async_exception_generators_multiple() -> None:
 
 
 @pytest.mark.anyio
-async def test_async_exception_generators_no_propogation() -> None:
+async def test_async_exception_in_teardown() -> None:
 
     errors_found = 0
 
@@ -400,3 +400,50 @@ async def test_async_exception_generators_no_propogation() -> None:
     with pytest.raises(ValueError):
         async with DependencyGraph(target=target).async_ctx() as g:
             target(**(await g.resolve_kwargs()))
+
+
+@pytest.mark.anyio
+async def test_async_propogation_disabled() -> None:
+
+    errors_found = 0
+
+    async def my_generator() -> AsyncGenerator[int, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+            raise Exception()
+
+    def target(_: int = Depends(my_generator)) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        async with DependencyGraph(target=target).async_ctx(
+            exception_propogation=False,
+        ) as g:
+            target(**(await g.resolve_kwargs()))
+
+    assert errors_found == 0
+
+
+def test_sync_propogation_disabled() -> None:
+
+    errors_found = 0
+
+    def my_generator() -> Generator[int, None, None]:
+        nonlocal errors_found
+        try:
+            yield 1
+        except ValueError:
+            errors_found += 1
+            raise Exception()
+
+    def target(_: int = Depends(my_generator)) -> None:
+        raise ValueError()
+
+    with pytest.raises(ValueError):
+        with DependencyGraph(target=target).sync_ctx(exception_propogation=False) as g:
+            target(**(g.resolve_kwargs()))
+
+    assert errors_found == 0
