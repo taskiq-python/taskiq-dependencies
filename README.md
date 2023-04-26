@@ -125,3 +125,54 @@ with graph.sync_ctx() as ctx:
 ```
 
 The ParamInfo has the information about name and parameters signature. It's useful if you want to create a dependency that changes based on parameter name, or signature.
+
+
+## Exception propagation
+
+By default if error happens within the context, we send this error to the dependency,
+so you can close it properly. You can disable this functionality by setting `exception_propagation` parameter to `False`.
+
+Let's imagine that you want to get a database session from pool and commit after the function is done.
+
+
+```python
+async def get_session():
+    session = sessionmaker()
+
+    yield session
+
+    await session.commit()
+
+```
+
+But what if the error happened when the dependant function was called? In this case you want to rollback, instead of commit.
+To solve this problem, you can just wrap the `yield` statement in `try except` to handle the error.
+
+```python
+async def get_session():
+    session = sessionmaker()
+
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        return
+
+    await session.commit()
+
+```
+
+**Also, as a library developer, you can disable exception propagation**. If you do so, then no exception will ever be propagated to dependencies and no such `try except` expression will ever work.
+
+
+Example of disabled propogation.
+
+```python
+
+graph = DependencyGraph(target_func)
+
+with graph.sync_ctx(exception_propagation=False) as ctx:
+    print(ctx.resolve_kwargs())
+
+
+```
