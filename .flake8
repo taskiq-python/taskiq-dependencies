@@ -88,6 +88,8 @@ ignore =
   N802,
   ; Do not perform function calls in argument defaults.
   B008,
+  ; Found except `BaseException`
+  WPS424,
 
   ; all init files
   __init__.py:

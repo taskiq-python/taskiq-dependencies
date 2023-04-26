@@ -1,12 +1,16 @@
 import asyncio
 import inspect
 from copy import copy
+from logging import getLogger
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 from taskiq_dependencies.utils import ParamInfo
 
 if TYPE_CHECKING:
     from taskiq_dependencies.graph import DependencyGraph  # pragma: no cover
+
+
+logger = getLogger("taskiq.dependencies.ctx")
 
 
 class BaseResolveContext:
@@ -16,11 +20,13 @@ class BaseResolveContext:
         self,
         graph: "DependencyGraph",
         initial_cache: Optional[Dict[Any, Any]] = None,
+        exception_propagation: bool = True,
     ) -> None:
         self.graph = graph
         self.opened_dependencies: List[Any] = []
         self.sub_contexts: "List[Any]" = []
         self.initial_cache = initial_cache or {}
+        self.propagate_excs = exception_propagation
 
     def traverse_deps(  # noqa: C901, WPS210
         self,
@@ -116,18 +122,34 @@ class SyncResolveContext(BaseResolveContext):
         return self
 
     def __exit__(self, *args: Any) -> None:
-        self.close()
+        self.close(*args)
 
-    def close(self) -> None:
+    def close(self, *args: Any) -> None:  # noqa: C901
         """
         Close all opened dependencies.
 
         This function runs teardown of all dependencies.
+
+        :param args: exception info if any.
         """
+        exception_found = False
+        if args[1] is not None and self.propagate_excs:
+            exception_found = True
         for ctx in self.sub_contexts:
-            ctx.close()
+            ctx.close(*args)
         for dep in reversed(self.opened_dependencies):
             if inspect.isgenerator(dep):
+                if exception_found:
+                    try:
+                        dep.throw(*args)
+                    except BaseException as exc:
+                        logger.warning(
+                            "Exception found on dependency teardown %s",
+                            exc,
+                            exc_info=True,
+                        )
+                        continue
+                    continue
                 for _ in dep:  # noqa: WPS328
                     pass  # noqa: WPS420
 
@@ -201,21 +223,48 @@ class AsyncResolveContext(BaseResolveContext):
         return self
 
     async def __aexit__(self, *args: Any) -> None:
-        await self.close()
+        await self.close(*args)
 
-    async def close(self) -> None:  # noqa: C901
+    async def close(self, *args: Any) -> None:  # noqa: C901
         """
         Close all opened dependencies.
 
         This function runs teardown of all dependencies.
+
+        :param args: exception info if any.
         """
+        exception_found = False
+        if args[1] is not None and self.propagate_excs:
+            exception_found = True
         for ctx in self.sub_contexts:
-            await ctx.close()  # type: ignore
+            await ctx.close(*args)  # type: ignore
         for dep in reversed(self.opened_dependencies):
             if inspect.isgenerator(dep):
+                if exception_found:
+                    try:
+                        dep.throw(*args)
+                    except BaseException as exc:
+                        logger.warning(
+                            "Exception found on dependency teardown %s",
+                            exc,
+                            exc_info=True,
+                        )
+                        continue
+                    continue
                 for _ in dep:  # noqa: WPS328
                     pass  # noqa: WPS420
             elif inspect.isasyncgen(dep):
+                if exception_found:
+                    try:
+                        await dep.athrow(*args)
+                    except BaseException as exc:
+                        logger.warning(
+                            "Exception found on dependency teardown %s",
+                            exc,
+                            exc_info=True,
+                        )
+                        continue
+                    continue
                 async for _ in dep:  # noqa: WPS328
                     pass  # noqa: WPS420
 
