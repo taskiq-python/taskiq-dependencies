@@ -20,13 +20,13 @@ class BaseResolveContext:
         self,
         graph: "DependencyGraph",
         initial_cache: Optional[Dict[Any, Any]] = None,
-        exception_propogation: bool = True,
+        exception_propagation: bool = True,
     ) -> None:
         self.graph = graph
         self.opened_dependencies: List[Any] = []
         self.sub_contexts: "List[Any]" = []
         self.initial_cache = initial_cache or {}
-        self.propogate_excs = exception_propogation
+        self.propagate_excs = exception_propagation
 
     def traverse_deps(  # noqa: C901, WPS210
         self,
@@ -133,7 +133,7 @@ class SyncResolveContext(BaseResolveContext):
         :param args: exception info if any.
         """
         exception_found = False
-        if args[1] is not None and self.propogate_excs:
+        if args[1] is not None and self.propagate_excs:
             exception_found = True
         for ctx in self.sub_contexts:
             ctx.close(*args)
@@ -234,7 +234,7 @@ class AsyncResolveContext(BaseResolveContext):
         :param args: exception info if any.
         """
         exception_found = False
-        if args[1] is not None and self.propogate_excs:
+        if args[1] is not None and self.propagate_excs:
             exception_found = True
         for ctx in self.sub_contexts:
             await ctx.close(*args)  # type: ignore
