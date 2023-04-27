@@ -133,7 +133,7 @@ class SyncResolveContext(BaseResolveContext):
         :param args: exception info if any.
         """
         exception_found = False
-        if args[1] is not None and self.propagate_excs:
+        if self.propagate_excs and len(args) > 1 and args[1] is not None:
             exception_found = True
         for ctx in self.sub_contexts:
             ctx.close(*args)
@@ -234,7 +234,7 @@ class AsyncResolveContext(BaseResolveContext):
         :param args: exception info if any.
         """
         exception_found = False
-        if args[1] is not None and self.propagate_excs:
+        if self.propagate_excs and len(args) > 1 and args[1] is not None:
             exception_found = True
         for ctx in self.sub_contexts:
             await ctx.close(*args)  # type: ignore
