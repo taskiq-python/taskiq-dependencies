@@ -1,12 +1,13 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, Generic, TypeVar
+from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
 import pytest
 
 from taskiq_dependencies import DependencyGraph, Depends, ParamInfo
 
 _T = TypeVar("_T")
+_V = TypeVar("_V")
 
 
 @pytest.mark.anyio
@@ -317,25 +318,28 @@ def test_class_based_dependencies() -> None:
 def test_generic_class_based_dependencies() -> None:
     """Tests that if ParamInfo is used on the target, no error is raised."""
 
-    class TeClass:
+    def dep3():
+        return 123
+
+    class TeClass(Generic[_V]):
         def __init__(self, return_val: str) -> None:
             self.return_val = return_val
 
-        def __call__(self) -> str:
-            return self.return_val
+        def __call__(self, dep: int = Depends(dep3)) -> _V:
+            return self.return_val, dep
 
     class GenericClass(Generic[_T]):
-        def __init__(self, class_val: str = Depends(TeClass("tval"))):
+        def __init__(self, class_val: _T = Depends(TeClass[int]("tval"))):
             self.return_val = class_val
 
-    def target(class_val: GenericClass = Depends()) -> None:
+    def target(class_val: GenericClass[Tuple[str, int]] = Depends()) -> None:
         return None
 
     with DependencyGraph(target=target).sync_ctx() as g:
         kwargs = g.resolve_kwargs()
 
     info: str = kwargs["class_val"]
-    assert info.return_val == "tval"
+    assert info.return_val == ("tval", 123)
 
 
 def test_exception_generators() -> None:
