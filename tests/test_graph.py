@@ -318,10 +318,10 @@ def test_generic_class_based_dependencies() -> None:
     """Tests that if ParamInfo is used on the target, no error is raised."""
 
     class TeClass:
-        def __init__(self, return_val: _T) -> None:
+        def __init__(self, return_val: str) -> None:
             self.return_val = return_val
 
-        def __call__(self) -> _T:
+        def __call__(self) -> str:
             return self.return_val
 
     class GenericClass(Generic[_T]):
