@@ -1,10 +1,12 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Generic, TypeVar
 
 import pytest
 
 from taskiq_dependencies import DependencyGraph, Depends, ParamInfo
+
+_T = TypeVar("_T")
 
 
 @pytest.mark.anyio
@@ -312,8 +314,31 @@ def test_class_based_dependencies() -> None:
     assert info == "tval"
 
 
-def test_exception_generators() -> None:
+def test_generic_class_based_dependencies() -> None:
+    """Tests that if ParamInfo is used on the target, no error is raised."""
 
+    class TeClass:
+        def __init__(self, return_val: _T) -> None:
+            self.return_val = return_val
+
+        def __call__(self) -> _T:
+            return self.return_val
+
+    class GenericClass(Generic[_T]):
+        def __init__(self, class_val: str = Depends(TeClass("tval"))):
+            self.return_val = class_val
+
+    def target(class_val: GenericClass = Depends()) -> None:
+        return None
+
+    with DependencyGraph(target=target).sync_ctx() as g:
+        kwargs = g.resolve_kwargs()
+
+    info: str = kwargs["class_val"]
+    assert info.return_val == "tval"
+
+
+def test_exception_generators() -> None:
     errors_found = 0
 
     def my_generator() -> Generator[int, None, None]:
@@ -335,7 +360,6 @@ def test_exception_generators() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_generators() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -357,7 +381,6 @@ async def test_async_exception_generators() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_generators_multiple() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -383,7 +406,6 @@ async def test_async_exception_generators_multiple() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_in_teardown() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -404,7 +426,6 @@ async def test_async_exception_in_teardown() -> None:
 
 @pytest.mark.anyio
 async def test_async_propagation_disabled() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -428,7 +449,6 @@ async def test_async_propagation_disabled() -> None:
 
 
 def test_sync_propagation_disabled() -> None:
-
     errors_found = 0
 
     def my_generator() -> Generator[int, None, None]:

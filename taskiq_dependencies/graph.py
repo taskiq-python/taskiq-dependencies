@@ -108,6 +108,7 @@ class DependencyGraph:
                 # If this is a class, we need to get signature of
                 # an __init__ method.
                 hints = get_type_hints(dep.dependency.__init__)  # noqa: WPS609
+                sign = inspect.signature(dep.dependency.__init__)
             elif inspect.isfunction(dep.dependency):
                 # If this is function or an instance of a class, we get it's type hints.
                 hints = get_type_hints(dep.dependency)
