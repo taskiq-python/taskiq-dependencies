@@ -1,7 +1,7 @@
 import inspect
 from collections import defaultdict, deque
 from graphlib import TopologicalSorter
-from typing import Any, Callable, Dict, List, Optional, get_type_hints
+from typing import Any, Callable, Dict, List, Optional, get_origin, get_type_hints
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
@@ -102,13 +102,18 @@ class DependencyGraph:
                 continue
             if dep.dependency is None:
                 continue
+
+            origin = get_origin(dep.dependency)
+            origin = dep.dependency if origin is None else origin
+
             # Get signature and type hints.
-            sign = inspect.signature(dep.dependency)
-            if inspect.isclass(dep.dependency):
+            sign = inspect.signature(origin)
+            if inspect.isclass(origin):
                 # If this is a class, we need to get signature of
                 # an __init__ method.
                 hints = get_type_hints(dep.dependency.__init__)  # noqa: WPS609
-            elif inspect.isfunction(dep.dependency):
+                sign = inspect.signature(origin.__init__)
+            elif inspect.isfunction(origin):
                 # If this is function or an instance of a class, we get it's type hints.
                 hints = get_type_hints(dep.dependency)
             else:
