@@ -176,3 +176,87 @@ with graph.sync_ctx(exception_propagation=False) as ctx:
 
 
 ```
+
+
+## Generics support
+
+We support generics substitution for class-based dependencies.
+For example, let's define an interface and a class. This class can be
+parameterized with some type and we consider this type a dependency.
+
+```python
+import abc
+from typing import Any, Generic, TypeVar
+
+class MyInterface(abc.ABC):
+    @abc.abstractmethod
+    def getval(self) -> Any:
+        ...
+
+
+_T = TypeVar("_T", bound=MyInterface)
+
+
+class MyClass(Generic[_T]):
+    # We don't know exact type, but we assume
+    # that it can be used as a dependency.
+    def __init__(self, resource: _T = Depends()):
+        self.resource = resource
+
+    @property
+    def my_value(self) -> Any:
+        return self.resource.getval()
+
+```
+
+Now let's create several implementation of defined interface:
+
+```python
+
+def getstr() -> str:
+    return "strstr"
+
+
+def getint() -> int:
+    return 100
+
+
+class MyDep1(MyInterface):
+    def __init__(self, s: str = Depends(getstr)) -> None:
+        self.s = s
+
+    def getval(self) -> str:
+        return self.s
+
+
+class MyDep2(MyInterface):
+    def __init__(self, i: int = Depends(getint)) -> None:
+        self.i = i
+
+    def getval(self) -> int:
+        return self.i
+
+```
+
+Now you can use these dependencies by just setting proper type hints.
+
+```python
+def my_target(
+    d1: MyClass[MyDep1] = Depends(),
+    d2: MyClass[MyDep2] = Depends(),
+) -> None:
+    print(d1.my_value)
+    print(d2.my_value)
+
+
+with DependencyGraph(my_target).sync_ctx() as ctx:
+    my_target(**ctx.resolve_kwargs())
+
+```
+
+This code will is going to print:
+
+```
+strstr
+100
+```

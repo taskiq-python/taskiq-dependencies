@@ -90,6 +90,8 @@ ignore =
   B008,
   ; Found except `BaseException`
   WPS424,
+  ; Found a too complex `f` string
+  WPS237,
 
   ; all init files
   __init__.py:

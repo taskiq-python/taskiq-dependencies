@@ -102,13 +102,14 @@ class Dependency:
     and calculate before execution.
     """
 
-    def __init__(  # noqa: WPS234
+    def __init__(  # noqa: WPS211, WPS234
         self,
         dependency: Optional[Union[Type[Any], Callable[..., Any]]] = None,
         *,
         use_cache: bool = True,
         kwargs: Optional[Dict[str, Any]] = None,
         signature: Optional[inspect.Parameter] = None,
+        parent: "Optional[Dependency]" = None,
     ) -> None:
         self._id = uuid.uuid4()
         self.dependency = dependency
@@ -116,6 +117,7 @@ class Dependency:
         self.param_name = ""
         self.kwargs = kwargs or {}
         self.signature = signature
+        self.parent = parent
 
     def __hash__(self) -> int:
         return hash(self._id)
