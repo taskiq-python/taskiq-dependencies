@@ -1,7 +1,7 @@
 import inspect
 from collections import defaultdict, deque
 from graphlib import TopologicalSorter
-from typing import Any, Callable, Dict, List, Optional, get_type_hints
+from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
@@ -103,18 +103,55 @@ class DependencyGraph:
             if dep.dependency is None:
                 continue
             # Get signature and type hints.
-            sign = inspect.signature(dep.dependency)
-            if inspect.isclass(dep.dependency):
+            origin = getattr(dep.dependency, "__origin__", None)
+            if origin is None:
+                origin = dep.dependency
+
+            # If we found the typevar.
+            # It means, that somebody depend on generic type.
+            if isinstance(origin, TypeVar):
+                if dep.parent is None:
+                    raise ValueError(f"Cannot resolve generic {dep.dependency}")
+                parent_cls = dep.parent.dependency
+                parent_cls_origin = getattr(parent_cls, "__origin__", None)
+                # If we cannot find origin, than means, that we cannot resolve
+                # generic parameters. So exiting.
+                if parent_cls_origin is None:
+                    raise ValueError(
+                        f"Unknown generic argument {origin}. "
+                        + f"Please provide a type in param `{dep.parent.param_name}`"
+                        + f" of `{dep.parent.dependency}`",
+                    )
+                # We zip together names of parameters and the subsctituted values
+                # In parameters we would see TypeVars in args
+                # we would find actual classes.
+                generics = zip(
+                    parent_cls_origin.__parameters__,
+                    parent_cls.__args__,  # type: ignore
+                )
+                for tvar, type_param in generics:
+                    # If we found the typevar we're currently try to resolve,
+                    # we need to find origin of the substituted class.
+                    if tvar == origin:
+                        dep.dependency = type_param
+                        origin = getattr(type_param, "__origin__", None)
+                        if origin is None:
+                            origin = type_param
+
+            if inspect.isclass(origin):
                 # If this is a class, we need to get signature of
                 # an __init__ method.
-                hints = get_type_hints(dep.dependency.__init__)  # noqa: WPS609
+                hints = get_type_hints(origin.__init__)  # noqa: WPS609
+                sign = inspect.signature(origin.__init__)  # noqa: WPS609
             elif inspect.isfunction(dep.dependency):
                 # If this is function or an instance of a class, we get it's type hints.
                 hints = get_type_hints(dep.dependency)
+                sign = inspect.signature(origin)  # type: ignore
             else:
                 hints = get_type_hints(
                     dep.dependency.__call__,  # type: ignore # noqa: WPS609
                 )
+                sign = inspect.signature(origin)  # type: ignore
 
             # Now we need to iterate over parameters, to
             # find all parameters, that have TaskiqDepends as it's
@@ -172,6 +209,7 @@ class DependencyGraph:
                     use_cache=default_value.use_cache,
                     kwargs=default_value.kwargs,
                     signature=param,
+                    parent=dep,
                 )
                 # Also we set the parameter name,
                 # it will help us in future when
