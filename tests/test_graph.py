@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Generic, TypeVar
 
 import pytest
 
@@ -313,7 +313,6 @@ def test_class_based_dependencies() -> None:
 
 
 def test_exception_generators() -> None:
-
     errors_found = 0
 
     def my_generator() -> Generator[int, None, None]:
@@ -335,7 +334,6 @@ def test_exception_generators() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_generators() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -357,7 +355,6 @@ async def test_async_exception_generators() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_generators_multiple() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -383,7 +380,6 @@ async def test_async_exception_generators_multiple() -> None:
 
 @pytest.mark.anyio
 async def test_async_exception_in_teardown() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -404,7 +400,6 @@ async def test_async_exception_in_teardown() -> None:
 
 @pytest.mark.anyio
 async def test_async_propagation_disabled() -> None:
-
     errors_found = 0
 
     async def my_generator() -> AsyncGenerator[int, None]:
@@ -428,7 +423,6 @@ async def test_async_propagation_disabled() -> None:
 
 
 def test_sync_propagation_disabled() -> None:
-
     errors_found = 0
 
     def my_generator() -> Generator[int, None, None]:
@@ -447,3 +441,133 @@ def test_sync_propagation_disabled() -> None:
             target(**(g.resolve_kwargs()))
 
     assert errors_found == 0
+
+
+def test_generic_classes() -> None:
+    errors_found = 0
+
+    _T = TypeVar("_T")
+
+    class MyClass:
+        pass
+
+    class MainClass(Generic[_T]):
+        def __init__(self, val: _T = Depends()) -> None:
+            self.val = val
+
+    def test_func(a: MainClass[MyClass] = Depends()) -> MyClass:
+        return a.val
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        value = test_func(**(g.resolve_kwargs()))
+
+    assert errors_found == 0
+    assert isinstance(value, MyClass)
+
+
+def test_generic_multiple() -> None:
+    errors_found = 0
+
+    _T = TypeVar("_T")
+    _V = TypeVar("_V")
+
+    class MyClass1:
+        pass
+
+    class MyClass2:
+        pass
+
+    class MainClass(Generic[_T, _V]):
+        def __init__(self, t_val: _T = Depends(), v_val: _V = Depends()) -> None:
+            self.t_val = t_val
+            self.v_val = v_val
+
+    def test_func(
+        a: MainClass[MyClass1, MyClass2] = Depends(),
+    ) -> MainClass[MyClass1, MyClass2]:
+        return a
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        result = test_func(**(g.resolve_kwargs()))
+
+    assert errors_found == 0
+    assert isinstance(result.t_val, MyClass1)
+    assert isinstance(result.v_val, MyClass2)
+
+
+def test_generic_unordered() -> None:
+    errors_found = 0
+
+    _T = TypeVar("_T")
+    _V = TypeVar("_V")
+
+    class MyClass1:
+        pass
+
+    class MyClass2:
+        pass
+
+    class MainClass(Generic[_T, _V]):
+        def __init__(self, v_val: _V = Depends(), t_val: _T = Depends()) -> None:
+            self.t_val = t_val
+            self.v_val = v_val
+
+    def test_func(
+        a: MainClass[MyClass1, MyClass2] = Depends(),
+    ) -> MainClass[MyClass1, MyClass2]:
+        return a
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        result = test_func(**(g.resolve_kwargs()))
+
+    assert errors_found == 0
+    assert isinstance(result.t_val, MyClass1)
+    assert isinstance(result.v_val, MyClass2)
+
+
+def test_generic_classes_nesting() -> None:
+    errors_found = 0
+
+    _T = TypeVar("_T")
+    _V = TypeVar("_V")
+
+    class DummyClass:
+        pass
+
+    class DependantClass(Generic[_V]):
+        def __init__(self, var: _V = Depends()) -> None:
+            self.var = var
+
+    class MainClass(Generic[_T]):
+        def __init__(self, var: _T = Depends()) -> None:
+            self.var = var
+
+    def test_func(a: MainClass[DependantClass[DummyClass]] = Depends()) -> DummyClass:
+        return a.var.var
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        value = test_func(**(g.resolve_kwargs()))
+
+    assert errors_found == 0
+    assert isinstance(value, DummyClass)
+
+
+def test_generic_class_based_dependencies() -> None:
+    """Tests that if ParamInfo is used on the target, no error is raised."""
+
+    _T = TypeVar("_T")
+
+    class GenericClass(Generic[_T]):
+        def __init__(self, class_val: _T = Depends()):
+            self.return_val = class_val
+
+    def func_dep() -> GenericClass[int]:
+        return GenericClass(123)
+
+    def target(my_dep: GenericClass[int] = Depends(func_dep)) -> int:
+        return my_dep.return_val
+
+    with DependencyGraph(target=target).sync_ctx() as g:
+        result = target(**g.resolve_kwargs())
+
+    assert result == 123
