@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, Generic, TypeVar, Tuple
+from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
 import pytest
 
@@ -593,14 +593,16 @@ async def test_graph_type_hints() -> None:
 async def test_graph_generic_type_hints() -> None:
     _T = TypeVar("_T")
 
-    def dep3():
+    def dep3() -> int:
         return 123
 
     class GenericClass(Generic[_T]):
-        def __init__(self, class_val: _T = Depends(dep3)):
+        def __init__(self, class_val: int = Depends(dep3)):
             self.return_val = class_val
 
-    def target(class_val: GenericClass[Tuple[str, int]] = Depends(use_cache=False)) -> None:
+    def target(
+        class_val: GenericClass[Tuple[str, int]] = Depends(use_cache=False),
+    ) -> None:
         return None
 
     g = DependencyGraph(target=target)
