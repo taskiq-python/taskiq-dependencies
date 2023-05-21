@@ -142,6 +142,8 @@ class SyncResolveContext(BaseResolveContext):
                 if exception_found:
                     try:
                         dep.throw(*args)
+                    except StopIteration:
+                        continue
                     except BaseException as exc:
                         logger.warning(
                             "Exception found on dependency teardown %s",
@@ -243,6 +245,8 @@ class AsyncResolveContext(BaseResolveContext):
                 if exception_found:
                     try:
                         dep.throw(*args)
+                    except StopIteration:
+                        continue
                     except BaseException as exc:
                         logger.warning(
                             "Exception found on dependency teardown %s",
@@ -257,6 +261,8 @@ class AsyncResolveContext(BaseResolveContext):
                 if exception_found:
                     try:
                         await dep.athrow(*args)
+                    except StopAsyncIteration:
+                        continue
                     except BaseException as exc:
                         logger.warning(
                             "Exception found on dependency teardown %s",
