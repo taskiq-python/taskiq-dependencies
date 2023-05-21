@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, Generic, TypeVar
+from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
 import pytest
 
@@ -571,3 +571,43 @@ def test_generic_class_based_dependencies() -> None:
         result = target(**g.resolve_kwargs())
 
     assert result == 123
+
+
+@pytest.mark.anyio
+async def test_graph_type_hints() -> None:
+    def dep() -> int:
+        return 123
+
+    def target(class_val: int = Depends(dep, use_cache=False)) -> None:
+        return None
+
+    g = DependencyGraph(target=target)
+    for dep_obj in g.subgraphs.keys():
+        assert dep_obj.param_name == "class_val"
+        assert dep_obj.dependency == dep
+        assert dep_obj.signature.name == "class_val"
+        assert dep_obj.signature.annotation == int
+
+
+@pytest.mark.anyio
+async def test_graph_generic_type_hints() -> None:
+    _T = TypeVar("_T")
+
+    def dep3() -> int:
+        return 123
+
+    class GenericClass(Generic[_T]):
+        def __init__(self, class_val: int = Depends(dep3)):
+            self.return_val = class_val
+
+    def target(
+        class_val: GenericClass[Tuple[str, int]] = Depends(use_cache=False),
+    ) -> None:
+        return None
+
+    g = DependencyGraph(target=target)
+    for dep_obj in g.subgraphs.keys():
+        assert dep_obj.param_name == "class_val"
+        assert dep_obj.dependency == GenericClass[Tuple[str, int]]
+        assert dep_obj.signature.name == "class_val"
+        assert dep_obj.signature.annotation == GenericClass[Tuple[str, int]]
