@@ -41,6 +41,7 @@ class DependencyGraph:
     def async_ctx(
         self,
         initial_cache: Optional[Dict[Any, Any]] = None,
+        replaced_deps: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> AsyncResolveContext:
         """
@@ -51,17 +52,20 @@ class DependencyGraph:
         :param initial_cache: initial cache dict.
         :param exception_propagation: If true, all found errors within
             context will be propagated to dependencies.
+        :param replaced_deps: dict with dependencies to replace.
         :return: new resolver context.
         """
         return AsyncResolveContext(
-            self,
-            initial_cache,
-            exception_propagation,
+            graph=self,
+            initial_cache=initial_cache,
+            exception_propagation=exception_propagation,
+            replaced_deps=replaced_deps,
         )
 
     def sync_ctx(
         self,
         initial_cache: Optional[Dict[Any, Any]] = None,
+        replaced_deps: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> SyncResolveContext:
         """
@@ -72,12 +76,14 @@ class DependencyGraph:
         :param initial_cache: initial cache dict.
         :param exception_propagation: If true, all found errors within
             context will be propagated to dependencies.
+        :param replaced_deps: dict with dependencies to replace.
         :return: new resolver context.
         """
         return SyncResolveContext(
-            self,
-            initial_cache,
-            exception_propagation,
+            graph=self,
+            initial_cache=initial_cache,
+            exception_propagation=exception_propagation,
+            replaced_deps=replaced_deps,
         )
 
     def _build_graph(self) -> None:  # noqa: C901, WPS210

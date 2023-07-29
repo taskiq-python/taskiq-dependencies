@@ -1,4 +1,5 @@
 import asyncio
+import re
 import uuid
 from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
@@ -36,8 +37,9 @@ async def test_dependency_async_successful() -> None:
         return a
 
     with DependencyGraph(testfunc).sync_ctx({}) as sctx:
-        with pytest.raises(RuntimeError):
-            assert sctx.resolve_kwargs() == {"a": 1}
+        with pytest.warns(match=re.compile(".*was never awaited.*")):
+            with pytest.raises(RuntimeError):
+                assert sctx.resolve_kwargs() == {"a": 1}
 
     async with DependencyGraph(testfunc).async_ctx({}) as actx:
         assert await actx.resolve_kwargs() == {"a": 1}
@@ -611,3 +613,96 @@ async def test_graph_generic_type_hints() -> None:
         assert dep_obj.dependency == GenericClass[Tuple[str, int]]
         assert dep_obj.signature.name == "class_val"
         assert dep_obj.signature.annotation == GenericClass[Tuple[str, int]]
+
+
+@pytest.mark.anyio
+async def test_replaced_dep_simple() -> None:
+    def replaced() -> int:
+        return 321
+
+    def dep() -> int:
+        return 123
+
+    def target(val: int = Depends(dep)) -> None:
+        return None
+
+    graph = DependencyGraph(target=target)
+    async with graph.async_ctx(replaced_deps={dep: replaced}) as ctx:
+        kwargs = await ctx.resolve_kwargs()
+    assert kwargs["val"] == 321
+
+
+@pytest.mark.anyio
+async def test_replaced_dep_generators() -> None:
+    call_count = 0
+
+    def replaced() -> Generator[int, None, None]:
+        nonlocal call_count
+        yield 321
+        call_count += 1
+
+    def dep() -> int:
+        return 123
+
+    def target(val: int = Depends(dep)) -> None:
+        return None
+
+    graph = DependencyGraph(target=target)
+    async with graph.async_ctx(replaced_deps={dep: replaced}) as ctx:
+        kwargs = await ctx.resolve_kwargs()
+    assert kwargs["val"] == 321
+    assert call_count == 1
+
+
+@pytest.mark.anyio
+async def test_replaced_dep_exception_propogation() -> None:
+    exc_count = 0
+
+    def replaced() -> Generator[int, None, None]:
+        nonlocal exc_count
+        try:
+            yield 321
+        except ValueError:
+            exc_count += 1
+
+    def dep() -> int:
+        return 123
+
+    def target(val: int = Depends(dep)) -> None:
+        raise ValueError("lol")
+
+    graph = DependencyGraph(target=target)
+    with pytest.raises(ValueError):
+        async with graph.async_ctx(
+            replaced_deps={dep: replaced},
+            exception_propagation=True,
+        ) as ctx:
+            kwargs = await ctx.resolve_kwargs()
+            assert kwargs["val"] == 321
+            target(**kwargs)
+    assert exc_count == 1
+
+
+@pytest.mark.anyio
+async def test_replaced_dep_subdependencies() -> None:
+    def subdep() -> int:
+        return 321
+
+    def replaced(ret_val: int = Depends(subdep)) -> int:
+        return ret_val
+
+    def dep() -> int:
+        return 123
+
+    def target(val: int = Depends(dep)) -> None:
+        raise ValueError("lol")
+
+    graph = DependencyGraph(target=target)
+    with pytest.raises(ValueError):
+        async with graph.async_ctx(
+            replaced_deps={dep: replaced},
+            exception_propagation=True,
+        ) as ctx:
+            kwargs = await ctx.resolve_kwargs()
+            assert kwargs["val"] == 321
+            target(**kwargs)
