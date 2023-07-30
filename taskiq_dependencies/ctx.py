@@ -27,7 +27,7 @@ class BaseResolveContext:
         self.opened_dependencies: List[Any] = []
         self.sub_contexts: "List[Any]" = []
         self.initial_cache = initial_cache or {}
-        self.replaced_funcs = replaced_deps or {}
+        self.replaced_deps = replaced_deps or {}
         self.propagate_excs = exception_propagation
 
     def traverse_deps(  # noqa: C901, WPS210
@@ -93,7 +93,7 @@ class BaseResolveContext:
                         resolved_kwargs.update(subdep.kwargs)
                     # We try to grab possible replacement for
                     # function if any. Otherwise, original subdependency is returned.
-                    target_dependency = self.replaced_funcs.get(
+                    target_dependency = self.replaced_deps.get(
                         subdep.dependency,
                         subdep.dependency,
                     )
@@ -113,7 +113,7 @@ class BaseResolveContext:
                 user_kwargs.update(kwargs)
                 # From dict of replaced functions,
                 # we grab possible replacement or original function.
-                target_dependency = self.replaced_funcs.get(
+                target_dependency = self.replaced_deps.get(
                     dep.dependency,
                     dep.dependency,
                 )
@@ -186,7 +186,7 @@ class SyncResolveContext(BaseResolveContext):
             ctx = SyncResolveContext(
                 graph=executed_func,
                 initial_cache=initial_cache,
-                replaced_deps=self.replaced_funcs,
+                replaced_deps=self.replaced_deps,
                 exception_propagation=self.propagate_excs,
             )
             self.sub_contexts.append(ctx)
@@ -308,7 +308,7 @@ class AsyncResolveContext(BaseResolveContext):
             ctx = AsyncResolveContext(
                 graph=executed_func,
                 initial_cache=initial_cache,
-                replaced_deps=self.replaced_funcs,
+                replaced_deps=self.replaced_deps,
                 exception_propagation=self.propagate_excs,
             )  # type: ignore
             self.sub_contexts.append(ctx)
