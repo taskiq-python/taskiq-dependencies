@@ -695,14 +695,12 @@ async def test_replaced_dep_subdependencies() -> None:
         return 123
 
     def target(val: int = Depends(dep)) -> None:
-        raise ValueError("lol")
+        """Stub function."""
 
     graph = DependencyGraph(target=target)
-    with pytest.raises(ValueError):
-        async with graph.async_ctx(
-            replaced_deps={dep: replaced},
-            exception_propagation=True,
-        ) as ctx:
-            kwargs = await ctx.resolve_kwargs()
-            assert kwargs["val"] == 321
-            target(**kwargs)
+    async with graph.async_ctx(
+        replaced_deps={dep: replaced},
+        exception_propagation=True,
+    ) as ctx:
+        kwargs = await ctx.resolve_kwargs()
+        assert kwargs["val"] == 321

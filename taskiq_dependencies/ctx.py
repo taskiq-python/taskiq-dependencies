@@ -20,14 +20,12 @@ class BaseResolveContext:
         self,
         graph: "DependencyGraph",
         initial_cache: Optional[Dict[Any, Any]] = None,
-        replaced_deps: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> None:
         self.graph = graph
         self.opened_dependencies: List[Any] = []
         self.sub_contexts: "List[Any]" = []
         self.initial_cache = initial_cache or {}
-        self.replaced_deps = replaced_deps or {}
         self.propagate_excs = exception_propagation
 
     def traverse_deps(  # noqa: C901, WPS210
@@ -58,7 +56,7 @@ class BaseResolveContext:
             # later.
             if not dep.use_cache:
                 continue
-            # If somehow we have dependency with unknown function.
+            # If somehow we have dependency with unknwon function.
             if dep.dependency is None:
                 continue
             # If dependency is already calculated.
@@ -91,13 +89,7 @@ class BaseResolveContext:
                         continue
                     if subdep.kwargs:
                         resolved_kwargs.update(subdep.kwargs)
-                    # We try to grab possible replacement for
-                    # function if any. Otherwise, original subdependency is returned.
-                    target_dependency = self.replaced_deps.get(
-                        subdep.dependency,
-                        subdep.dependency,
-                    )
-                    kwargs[subdep.param_name] = yield target_dependency(
+                    kwargs[subdep.param_name] = yield subdep.dependency(
                         **resolved_kwargs,
                     )
 
@@ -111,13 +103,7 @@ class BaseResolveContext:
             ):
                 user_kwargs = dep.kwargs
                 user_kwargs.update(kwargs)
-                # From dict of replaced functions,
-                # we grab possible replacement or original function.
-                target_dependency = self.replaced_deps.get(
-                    dep.dependency,
-                    dep.dependency,
-                )
-                cache[dep.dependency] = yield target_dependency(**user_kwargs)
+                cache[dep.dependency] = yield dep.dependency(**user_kwargs)
         return kwargs
 
 
@@ -183,12 +169,7 @@ class SyncResolveContext(BaseResolveContext):
         :return: dict with resolved kwargs.
         """
         if getattr(executed_func, "dep_graph", False):
-            ctx = SyncResolveContext(
-                graph=executed_func,
-                initial_cache=initial_cache,
-                replaced_deps=self.replaced_deps,
-                exception_propagation=self.propagate_excs,
-            )
+            ctx = SyncResolveContext(executed_func, initial_cache)
             self.sub_contexts.append(ctx)
             sub_result = ctx.resolve_kwargs()
         elif inspect.isgenerator(executed_func):
@@ -305,12 +286,7 @@ class AsyncResolveContext(BaseResolveContext):
         :return: dict with resolved kwargs.
         """
         if getattr(executed_func, "dep_graph", False):
-            ctx = AsyncResolveContext(
-                graph=executed_func,
-                initial_cache=initial_cache,
-                replaced_deps=self.replaced_deps,
-                exception_propagation=self.propagate_excs,
-            )  # type: ignore
+            ctx = AsyncResolveContext(executed_func, initial_cache)  # type: ignore
             self.sub_contexts.append(ctx)
             sub_result = await ctx.resolve_kwargs()
         elif inspect.isgenerator(executed_func):
