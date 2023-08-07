@@ -20,6 +20,7 @@ class DependencyGraph:
     def __init__(
         self,
         target: Callable[..., Any],
+        replaced_deps: Optional[Dict[Any, Any]] = None,
     ) -> None:
         self.target = target
         # Ordinary dependencies with cache.
@@ -28,6 +29,7 @@ class DependencyGraph:
         # Can be considered as sub graphs.
         self.subgraphs: Dict[Any, DependencyGraph] = {}
         self.ordered_deps: List[Dependency] = []
+        self.replaced_deps = replaced_deps
         self._build_graph()
 
     def is_empty(self) -> bool:
@@ -41,6 +43,7 @@ class DependencyGraph:
     def async_ctx(
         self,
         initial_cache: Optional[Dict[Any, Any]] = None,
+        replaced_deps: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> AsyncResolveContext:
         """
@@ -51,10 +54,14 @@ class DependencyGraph:
         :param initial_cache: initial cache dict.
         :param exception_propagation: If true, all found errors within
             context will be propagated to dependencies.
+        :param replaced_deps: Dependencies to replace during runtime.
         :return: new resolver context.
         """
+        graph = self
+        if replaced_deps:
+            graph = DependencyGraph(self.target, replaced_deps)
         return AsyncResolveContext(
-            self,
+            graph,
             initial_cache,
             exception_propagation,
         )
@@ -62,6 +69,7 @@ class DependencyGraph:
     def sync_ctx(
         self,
         initial_cache: Optional[Dict[Any, Any]] = None,
+        replaced_deps: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> SyncResolveContext:
         """
@@ -72,10 +80,14 @@ class DependencyGraph:
         :param initial_cache: initial cache dict.
         :param exception_propagation: If true, all found errors within
             context will be propagated to dependencies.
+        :param replaced_deps: Dependencies to replace during runtime.
         :return: new resolver context.
         """
+        graph = self
+        if replaced_deps:
+            graph = DependencyGraph(self.target, replaced_deps)
         return SyncResolveContext(
-            self,
+            graph,
             initial_cache,
             exception_propagation,
         )
@@ -102,6 +114,8 @@ class DependencyGraph:
                 continue
             if dep.dependency is None:
                 continue
+            if self.replaced_deps and dep.dependency in self.replaced_deps:
+                dep.dependency = self.replaced_deps[dep.dependency]
             # Get signature and type hints.
             origin = getattr(dep.dependency, "__origin__", None)
             if origin is None:
