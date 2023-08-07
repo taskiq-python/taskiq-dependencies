@@ -260,3 +260,52 @@ This code will is going to print:
 strstr
 100
 ```
+
+## Dependencies replacement
+
+You can replace dependencies in runtime, it will recalculate graph
+and will execute your function with updated dependencies.
+
+**!!! This functionality tremendously slows down dependency resolution.**
+
+Use this functionality only for tests. Otherwise, you will end up building dependency graphs on every resolution request. Which is very slow.
+
+But for tests it may be a game changer, since you don't want to change your code, but some dependencies instead.
+
+Here's an example. Imagine you have a built graph for a specific function, like this:
+
+```python
+from taskiq_dependencies import DependencyGraph, Depends
+
+
+def dependency() -> int:
+    return 1
+
+
+def target(dep_value: int = Depends(dependency)) -> None:
+    assert dep_value == 1
+
+graph = DependencyGraph(target)
+```
+
+Normally, you would call the target, by writing something like this:
+
+```python
+with graph.sync_ctx() as ctx:
+    target(**ctx.resolve_kwargs())
+```
+
+But what if you want to replace dependency in runtime, just
+before resolving kwargs? The solution is to add `replaced_deps`
+parameter to the context method. For example:
+
+```python
+def replaced() -> int:
+    return 2
+
+
+with graph.sync_ctx(replaced_deps={dependency: replaced}) as ctx:
+    target(**ctx.resolve_kwargs())
+```
+
+Furthermore, the new dependency can depend on other dependencies. Or you can change type of your dependency, like generator instead of plain return. Everything should work as you would expect it.
