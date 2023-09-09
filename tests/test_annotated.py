@@ -105,3 +105,22 @@ def test_multiple_with_cache() -> None:
         value = test_func(**(g.resolve_kwargs()))
         assert id(value[0]) == id(value[1])
         assert isinstance(value[0], TestClass)
+
+
+def test_override() -> None:
+    class TestClass:
+        pass
+
+    MyType = Annotated[TestClass, Depends()]
+
+    def test_func(
+        dep: MyType,
+        dep2: Annotated[MyType, Depends(use_cache=False)],
+    ) -> Tuple[MyType, MyType]:
+        return dep, dep2
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        value = test_func(**(g.resolve_kwargs()))
+        assert id(value[0]) != id(value[1])
+        assert isinstance(value[0], TestClass)
+        assert isinstance(value[1], TestClass)

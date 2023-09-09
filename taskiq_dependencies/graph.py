@@ -172,9 +172,14 @@ class DependencyGraph:
             for param_name, param in sign.parameters.items():
                 default_value = param.default
                 if hasattr(param.annotation, "__metadata__"):  # noqa: WPS421
-                    for meta in param.annotation.__metadata__:
+                    # We go backwards,
+                    # because you may want to override your annotation
+                    # and the overriden value will appear to be after
+                    # the original `Depends` annotation.
+                    for meta in reversed(param.annotation.__metadata__):
                         if isinstance(meta, (Dependency, FastapiDepends)):
                             default_value = meta
+                            break
 
                 # This is for FastAPI integration. So you can
                 # use Depends from taskiq mixed with fastapi's dependencies.
