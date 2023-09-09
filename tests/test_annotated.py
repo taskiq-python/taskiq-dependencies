@@ -5,7 +5,7 @@ import pytest
 if sys.version_info < (3, 10):
     pytest.skip("Annotated is available only for python 3.10+", allow_module_level=True)
 
-from typing import Annotated, AsyncGenerator, Generic, TypeVar
+from typing import Annotated, AsyncGenerator, Generic, Tuple, TypeVar
 
 from taskiq_dependencies import DependencyGraph, Depends
 
@@ -74,3 +74,34 @@ async def test_annotated_asyncgen() -> None:
         assert value == 1
 
     assert opened and closed
+
+
+def test_multiple() -> None:
+    class TestClass:
+        pass
+
+    MyType = Annotated[TestClass, Depends(use_cache=False)]
+
+    def test_func(dep: MyType, dep2: MyType) -> Tuple[MyType, MyType]:
+        return dep, dep2
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        value = test_func(**(g.resolve_kwargs()))
+        assert value[0] != value[1]
+        assert isinstance(value[0], TestClass)
+        assert isinstance(value[1], TestClass)
+
+
+def test_multiple_with_cache() -> None:
+    class TestClass:
+        pass
+
+    MyType = Annotated[TestClass, Depends()]
+
+    def test_func(dep: MyType, dep2: MyType) -> Tuple[MyType, MyType]:
+        return dep, dep2
+
+    with DependencyGraph(target=test_func).sync_ctx(exception_propagation=False) as g:
+        value = test_func(**(g.resolve_kwargs()))
+        assert id(value[0]) == id(value[1])
+        assert isinstance(value[0], TestClass)
