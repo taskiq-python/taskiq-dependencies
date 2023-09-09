@@ -309,3 +309,56 @@ with graph.sync_ctx(replaced_deps={dependency: replaced}) as ctx:
 ```
 
 Furthermore, the new dependency can depend on other dependencies. Or you can change type of your dependency, like generator instead of plain return. Everything should work as you would expect it.
+
+## Annotated types
+
+Taskiq dependenices also support dependency injection through Annotated types.
+
+```python
+from typing import Annotated
+
+async def my_function(dependency: Annotated[int, Depends(my_func)]):
+    pass
+```
+
+Or you can specify classes
+
+
+```python
+from typing import Annotated
+
+class MyClass:
+    pass
+
+async def my_function(dependency: Annotated[MyClass, Depends(my_func)]):
+    pass
+```
+
+And, of course you can easily save such type aliases in variables.
+
+```python
+from typing import Annotated
+
+DepType = Annotated[int, Depends(my_func)]
+
+def my_function(dependency: DepType):
+    pass
+
+```
+
+Also we support overrides for annotated types.
+
+For example:
+
+```python
+from typing import Annotated
+
+DepType = Annotated[int, Depends(my_func)]
+
+def my_function(
+    dependency: DepType,
+    no_cache_dep: Annotated[DepType, Depends(my_func, use_cache=False)],
+) -> None:
+    pass
+
+```
