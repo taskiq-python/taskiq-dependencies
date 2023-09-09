@@ -9,7 +9,7 @@ from taskiq_dependencies.dependency import Dependency
 try:
     from fastapi.params import Depends as FastapiDepends  # noqa: WPS433
 except ImportError:
-    FastapiDepends = None  # type: ignore
+    FastapiDepends = Dependency  # type: ignore
 
 
 class DependencyGraph:
@@ -136,9 +136,8 @@ class DependencyGraph:
                         + f"Please provide a type in param `{dep.parent.param_name}`"
                         + f" of `{dep.parent.dependency}`",
                     )
-                # We zip together names of parameters and the subsctituted values
-                # In parameters we would see TypeVars in args
-                # we would find actual classes.
+                # We zip together names of parameters and the substituted values
+                # for generics.
                 generics = zip(
                     parent_cls_origin.__parameters__,
                     parent_cls.__args__,  # type: ignore
@@ -172,13 +171,14 @@ class DependencyGraph:
             # default vaule.
             for param_name, param in sign.parameters.items():
                 default_value = param.default
+                if hasattr(param.annotation, "__metadata__"):  # noqa: WPS421
+                    for meta in param.annotation.__metadata__:
+                        if isinstance(meta, (Dependency, FastapiDepends)):
+                            default_value = meta
 
                 # This is for FastAPI integration. So you can
                 # use Depends from taskiq mixed with fastapi's dependencies.
-                if FastapiDepends is not None and isinstance(  # noqa: WPS337
-                    default_value,
-                    FastapiDepends,
-                ):
+                if isinstance(default_value, FastapiDepends):
                     default_value = Dependency(
                         dependency=default_value.dependency,
                         use_cache=default_value.use_cache,
