@@ -345,3 +345,20 @@ def my_function(dependency: DepType):
     pass
 
 ```
+
+Also we support overrides for annotated types.
+
+For example:
+
+```python
+from typing import Annotated
+
+DepType = Annotated[int, Depends(my_func)]
+
+def my_function(
+    dependency: DepType,
+    no_cache_dep: Annotated[DepType, Depends(my_func, use_cache=False)],
+) -> None:
+    pass
+
+```
