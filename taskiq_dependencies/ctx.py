@@ -1,8 +1,9 @@
 import asyncio
 import inspect
+from collections import defaultdict
 from copy import copy
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Any, DefaultDict, Dict, Generator, List, Optional
 
 from taskiq_dependencies.utils import ParamInfo
 
@@ -49,6 +50,8 @@ class BaseResolveContext:
         # to separate dependencies that use cache,
         # from dependencies that aren't.
         cache = copy(self.initial_cache)
+        # Cache for all dependencies with kwargs.
+        kwargs_cache: "DefaultDict[Any, List[Any]]" = defaultdict(list)
         # We iterate over topologicaly sorted list of dependencies.
         for index, dep in enumerate(self.graph.ordered_deps):
             # If this dependency doesn't use cache,
@@ -62,6 +65,19 @@ class BaseResolveContext:
             # If dependency is already calculated.
             if dep.dependency in cache:
                 continue
+            # For dependencies with kwargs we check kwarged cache.
+            elif dep.kwargs and dep.dependency in kwargs_cache:
+                cache_hit = False
+                # We have to iterate over all cached dependencies with
+                # kwargs, because users may pass unhashable objects as kwargs.
+                # That's why we cannot use them as dict keys.
+                for cached_kwargs, _ in kwargs_cache[dep.dependency]:
+                    if cached_kwargs == dep.kwargs:
+                        cache_hit = True
+                        break
+                if cache_hit:
+                    continue
+
             kwargs = {}
             # Now we get list of dependencies for current top-level dependency
             # and iterate over it.
@@ -78,7 +94,13 @@ class BaseResolveContext:
                 if subdep.use_cache:
                     # If this dependency can be calculated, using cache,
                     # we try to get it from cache.
-                    kwargs[subdep.param_name] = cache[subdep.dependency]
+                    if subdep.kwargs and subdep.dependency in kwargs_cache:
+                        for cached_kwargs, kw_cache in kwargs_cache[subdep.dependency]:
+                            if cached_kwargs == subdep.kwargs:
+                                kwargs[subdep.param_name] = kw_cache
+                                break
+                    else:
+                        kwargs[subdep.param_name] = cache[subdep.dependency]
                 else:
                     # If this dependency doesn't use cache,
                     # we resolve it's dependencies and
@@ -101,9 +123,13 @@ class BaseResolveContext:
                 # because we calculate them when needed.
                 and dep.dependency != ParamInfo
             ):
-                user_kwargs = dep.kwargs
+                user_kwargs = copy(dep.kwargs)
                 user_kwargs.update(kwargs)
-                cache[dep.dependency] = yield dep.dependency(**user_kwargs)
+                resolved = yield dep.dependency(**user_kwargs)
+                if dep.kwargs:
+                    kwargs_cache[dep.dependency].append((dep.kwargs, resolved))
+                else:
+                    cache[dep.dependency] = resolved
         return kwargs
 
 

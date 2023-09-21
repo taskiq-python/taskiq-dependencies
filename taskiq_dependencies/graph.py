@@ -9,7 +9,7 @@ from taskiq_dependencies.dependency import Dependency
 try:
     from fastapi.params import Depends as FastapiDepends  # noqa: WPS433
 except ImportError:
-    FastapiDepends = Dependency  # type: ignore
+    FastapiDepends = None
 
 
 class DependencyGraph:
@@ -183,7 +183,10 @@ class DependencyGraph:
 
                 # This is for FastAPI integration. So you can
                 # use Depends from taskiq mixed with fastapi's dependencies.
-                if isinstance(default_value, FastapiDepends):
+                if FastapiDepends is not None and isinstance(  # noqa: WPS337
+                    default_value,
+                    FastapiDepends,
+                ):
                     default_value = Dependency(
                         dependency=default_value.dependency,
                         use_cache=default_value.use_cache,
@@ -194,7 +197,6 @@ class DependencyGraph:
                 # TaskiqDepends.
                 if not isinstance(default_value, Dependency):
                     continue
-
                 # If user haven't set the dependency,
                 # using TaskiqDepends constructor,
                 # we need to find variable's type hint.
