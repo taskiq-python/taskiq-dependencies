@@ -704,3 +704,29 @@ async def test_replaced_dep_subdependencies() -> None:
     ) as ctx:
         kwargs = await ctx.resolve_kwargs()
         assert kwargs["val"] == 321
+
+
+def test_kwargs_caches() -> None:
+    """
+    Test that kwarged caches work.
+
+    If user wants to pass kwargs to the dependency
+    multiple times, we must verify that it works.
+
+    And dependency calculated multiple times,
+    even with caches.
+    """
+
+    def random_dep(a: int) -> int:
+        return a
+
+    A = Depends(random_dep, kwargs={"a": 1})
+    B = Depends(random_dep, kwargs={"a": 2})
+
+    def target(a: int = A, b: int = B) -> int:
+        return a + b
+
+    graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as ctx:
+        kwargs = ctx.resolve_kwargs()
+        assert target(**kwargs) == 3
