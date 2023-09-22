@@ -177,7 +177,13 @@ class DependencyGraph:
                     # and the overriden value will appear to be after
                     # the original `Depends` annotation.
                     for meta in reversed(param.annotation.__metadata__):
-                        if isinstance(meta, (Dependency, FastapiDepends)):
+                        if isinstance(meta, Dependency):
+                            default_value = meta
+                            break
+                        if FastapiDepends is not None and isinstance(  # noqa: WPS337
+                            meta,
+                            FastapiDepends,
+                        ):
                             default_value = meta
                             break
 
