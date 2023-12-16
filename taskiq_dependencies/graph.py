@@ -1,4 +1,5 @@
 import inspect
+import sys
 from collections import defaultdict, deque
 from graphlib import TopologicalSorter
 from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
@@ -106,6 +107,12 @@ class DependencyGraph:
         :raises ValueError: if something happened.
         """
         dep_deque = deque([Dependency(self.target, use_cache=True)])
+        # This is for `from __future__ import annotations` support.
+        # We need to use `eval_str` argument, because
+        # signature of the function is a string, not an object.
+        signature_kwargs: Dict[str, Any] = {}
+        if sys.version_info >= (3, 10):
+            signature_kwargs["eval_str"] = True
 
         while dep_deque:
             dep = dep_deque.popleft()
@@ -155,16 +162,19 @@ class DependencyGraph:
                 # If this is a class, we need to get signature of
                 # an __init__ method.
                 hints = get_type_hints(origin.__init__)  # noqa: WPS609
-                sign = inspect.signature(origin.__init__)  # noqa: WPS609
+                sign = inspect.signature(
+                    origin.__init__,  # noqa: WPS609
+                    **signature_kwargs,
+                )
             elif inspect.isfunction(dep.dependency):
                 # If this is function or an instance of a class, we get it's type hints.
                 hints = get_type_hints(dep.dependency)
-                sign = inspect.signature(origin)  # type: ignore
+                sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
             else:
                 hints = get_type_hints(
                     dep.dependency.__call__,  # type: ignore # noqa: WPS609
                 )
-                sign = inspect.signature(origin)  # type: ignore
+                sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
 
             # Now we need to iterate over parameters, to
             # find all parameters, that have TaskiqDepends as it's
