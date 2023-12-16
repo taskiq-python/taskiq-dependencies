@@ -1,7 +1,16 @@
 import inspect
 from collections import defaultdict, deque
 from graphlib import TopologicalSorter
-from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    ForwardRef,
+    List,
+    Optional,
+    TypeVar,
+    get_type_hints,
+)
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
@@ -171,12 +180,22 @@ class DependencyGraph:
             # default vaule.
             for param_name, param in sign.parameters.items():
                 default_value = param.default
-                if hasattr(param.annotation, "__metadata__"):  # noqa: WPS421
+                annotation = param.annotation
+                if isinstance(param.annotation, str):
+                    globalns = getattr(origin, "__globals__", {})
+                    annotation = ForwardRef(  # type: ignore # noqa: WPS437
+                        param.annotation,
+                    )._evaluate(
+                        globalns,
+                        None,
+                        set(),
+                    )
+                if hasattr(annotation, "__metadata__"):  # noqa: WPS421
                     # We go backwards,
                     # because you may want to override your annotation
                     # and the overriden value will appear to be after
                     # the original `Depends` annotation.
-                    for meta in reversed(param.annotation.__metadata__):
+                    for meta in reversed(annotation.__metadata__):
                         if isinstance(meta, Dependency):
                             default_value = meta
                             break
