@@ -362,3 +362,5 @@ def my_function(
     pass
 
 ```
+
+Also, please note that if you're using `from __future__ import annotations` it won't work for python <= 3.9. Because the `inspect.signature` function doesn't support it. In all future versions it will work as expected.
