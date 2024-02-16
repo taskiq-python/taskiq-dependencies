@@ -1,6 +1,7 @@
 import asyncio
 import re
 import uuid
+from contextlib import asynccontextmanager, contextmanager
 from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
 import pytest
@@ -96,6 +97,76 @@ async def test_dependency_async_gen_successful() -> None:
 
         await asyncio.sleep(0.001)
         closes += 1
+
+    def testfunc(a: int = Depends(dep1)) -> int:
+        return a
+
+    with DependencyGraph(testfunc).sync_ctx({}) as sctx:
+        with pytest.raises(RuntimeError):
+            assert sctx.resolve_kwargs() == {"a": 1}
+
+    async with DependencyGraph(testfunc).async_ctx({}) as actx:
+        assert await actx.resolve_kwargs() == {"a": 1}
+        assert starts == 1
+        assert closes == 0
+    assert closes == 1
+
+
+@pytest.mark.anyio
+async def test_dependency_contextmanager_successful() -> None:
+    """Tests that contextmanagers work as expected."""
+    starts = 0
+    closes = 0
+
+    @contextmanager
+    def dep1() -> Generator[int, None, None]:
+        nonlocal starts  # noqa: WPS420
+        nonlocal closes  # noqa: WPS420
+
+        starts += 1
+
+        try:
+            yield 1
+        finally:
+            closes += 1
+
+    def testfunc(a: int = Depends(dep1)) -> int:
+        return a
+
+    with DependencyGraph(testfunc).sync_ctx({}) as sctx:
+        assert sctx.resolve_kwargs() == {"a": 1}
+        assert starts == 1
+        assert closes == 0
+        starts = 0
+    assert closes == 1
+    closes = 0
+
+    async with DependencyGraph(testfunc).async_ctx({}) as actx:
+        assert await actx.resolve_kwargs() == {"a": 1}
+        assert starts == 1
+        assert closes == 0
+    assert closes == 1
+
+
+@pytest.mark.anyio
+async def test_dependency_async_manager_successful() -> None:
+    """This test checks that async contextmanagers work."""
+    starts = 0
+    closes = 0
+
+    @asynccontextmanager
+    async def dep1() -> AsyncGenerator[int, None]:
+        nonlocal starts  # noqa: WPS420
+        nonlocal closes  # noqa: WPS420
+
+        await asyncio.sleep(0.001)
+        starts += 1
+
+        try:
+            yield 1
+        finally:
+            await asyncio.sleep(0.001)
+            closes += 1
 
     def testfunc(a: int = Depends(dep1)) -> int:
         return a
