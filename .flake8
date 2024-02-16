@@ -92,7 +92,7 @@ ignore =
   WPS424,
   ; Found a too complex `f` string
   WPS237,
-  ; Found `no cover` comments overuse: 7 > 5
+  ; Found `no cover` comments overuse
   WPS403,
 
 per-file-ignores =
