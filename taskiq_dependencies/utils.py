@@ -1,5 +1,11 @@
 import inspect
-from typing import Any, AsyncContextManager, ContextManager, Optional, TypeGuard
+import sys
+from typing import Any, AsyncContextManager, ContextManager, Optional
+
+if sys.version_info < (3, 10):
+    from typing_extensions import TypeGuard  # noqa: WPS433
+else:
+    from typing import TypeGuard  # noqa: WPS433
 
 
 class ParamInfo:
