@@ -1,4 +1,3 @@
-import asyncio
 import re
 import uuid
 from contextlib import asynccontextmanager, contextmanager
@@ -31,7 +30,6 @@ async def test_dependency_async_successful() -> None:
     """Test that async dependencies work fine."""
 
     async def dep1() -> int:
-        await asyncio.sleep(0.001)
         return 1
 
     def testfunc(a: int = Depends(dep1)) -> int:
@@ -90,12 +88,10 @@ async def test_dependency_async_gen_successful() -> None:
         nonlocal starts  # noqa: WPS420
         nonlocal closes  # noqa: WPS420
 
-        await asyncio.sleep(0.001)
         starts += 1
 
         yield 1
 
-        await asyncio.sleep(0.001)
         closes += 1
 
     def testfunc(a: int = Depends(dep1)) -> int:
@@ -159,13 +155,11 @@ async def test_dependency_async_manager_successful() -> None:
         nonlocal starts  # noqa: WPS420
         nonlocal closes  # noqa: WPS420
 
-        await asyncio.sleep(0.001)
         starts += 1
 
         try:
             yield 1
         finally:
-            await asyncio.sleep(0.001)
             closes += 1
 
     def testfunc(a: int = Depends(dep1)) -> int:
