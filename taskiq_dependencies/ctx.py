@@ -5,7 +5,7 @@ from copy import copy
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, DefaultDict, Dict, Generator, List, Optional
 
-from taskiq_dependencies.utils import ParamInfo
+from taskiq_dependencies.utils import ParamInfo, isasynccontextmanager, iscontextmanager
 
 if TYPE_CHECKING:
     from taskiq_dependencies.graph import DependencyGraph  # pragma: no cover
@@ -59,7 +59,7 @@ class BaseResolveContext:
             # later.
             if not dep.use_cache:
                 continue
-            # If somehow we have dependency with unknwon function.
+            # If somehow we have dependency with unknown function.
             if dep.dependency is None:
                 continue
             # If dependency is already calculated.
@@ -180,6 +180,8 @@ class SyncResolveContext(BaseResolveContext):
                     continue
                 for _ in dep:  # noqa: WPS328
                     pass  # noqa: WPS420
+            elif iscontextmanager(dep):
+                dep.__exit__(*args)  # noqa: WPS609
 
     def resolver(self, executed_func: Any, initial_cache: Dict[Any, Any]) -> Any:
         """
@@ -194,7 +196,7 @@ class SyncResolveContext(BaseResolveContext):
 
         :return: dict with resolved kwargs.
         """
-        if getattr(executed_func, "dep_graph", False):
+        if getattr(executed_func, "dep_graph", False):  # noqa: WPS223
             ctx = SyncResolveContext(executed_func, initial_cache)
             self.sub_contexts.append(ctx)
             sub_result = ctx.resolve_kwargs()
@@ -206,7 +208,10 @@ class SyncResolveContext(BaseResolveContext):
                 "Coroutines cannot be used in sync context. "
                 "Please use async context instead.",
             )
-        elif inspect.isasyncgen(executed_func):
+        elif iscontextmanager(executed_func):
+            sub_result = executed_func.__enter__()  # noqa: WPS609
+            self.opened_dependencies.append(executed_func)
+        elif inspect.isasyncgen(executed_func) or isasynccontextmanager(executed_func):
             raise RuntimeError(
                 "Coroutines cannot be used in sync context. "
                 "Please use async context instead.",
@@ -299,8 +304,16 @@ class AsyncResolveContext(BaseResolveContext):
                     continue
                 async for _ in dep:  # noqa: WPS328
                     pass  # noqa: WPS420
+            elif iscontextmanager(dep):
+                dep.__exit__(*args)  # noqa: WPS609
+            elif isasynccontextmanager(dep):
+                await dep.__aexit__(*args)  # noqa: WPS609
 
-    async def resolver(self, executed_func: Any, initial_cache: Dict[Any, Any]) -> Any:
+    async def resolver(  # noqa: C901
+        self,
+        executed_func: Any,
+        initial_cache: Dict[Any, Any],
+    ) -> Any:
         """
         Async resolver.
 
@@ -311,7 +324,7 @@ class AsyncResolveContext(BaseResolveContext):
         :param initial_cache: cache to build a context if graph was passed.
         :return: dict with resolved kwargs.
         """
-        if getattr(executed_func, "dep_graph", False):
+        if getattr(executed_func, "dep_graph", False):  # noqa: WPS223
             ctx = AsyncResolveContext(executed_func, initial_cache)  # type: ignore
             self.sub_contexts.append(ctx)
             sub_result = await ctx.resolve_kwargs()
@@ -322,6 +335,12 @@ class AsyncResolveContext(BaseResolveContext):
             sub_result = await executed_func
         elif inspect.isasyncgen(executed_func):
             sub_result = await executed_func.__anext__()  # noqa: WPS609
+            self.opened_dependencies.append(executed_func)
+        elif iscontextmanager(executed_func):
+            sub_result = executed_func.__enter__()  # noqa: WPS609
+            self.opened_dependencies.append(executed_func)
+        elif isasynccontextmanager(executed_func):
+            sub_result = await executed_func.__aenter__()  # noqa: WPS609
             self.opened_dependencies.append(executed_func)
         else:
             sub_result = executed_func

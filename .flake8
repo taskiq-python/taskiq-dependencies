@@ -92,6 +92,8 @@ ignore =
   WPS424,
   ; Found a too complex `f` string
   WPS237,
+  ; Found `no cover` comments overuse
+  WPS403,
 
 per-file-ignores =
   ; all tests

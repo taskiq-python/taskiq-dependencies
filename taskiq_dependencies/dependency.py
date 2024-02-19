@@ -2,8 +2,10 @@ import inspect
 import uuid
 from typing import (  # noqa: WPS235
     Any,
+    AsyncContextManager,
     AsyncGenerator,
     Callable,
+    ContextManager,
     Coroutine,
     Dict,
     Generator,
@@ -15,6 +17,26 @@ from typing import (  # noqa: WPS235
 )
 
 _T = TypeVar("_T")  # noqa: WPS111
+
+
+@overload
+def Depends(  # noqa: WPS234
+    dependency: Optional[Callable[..., ContextManager[_T]]] = None,
+    *,
+    use_cache: bool = True,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> _T:  # pragma: no cover
+    ...
+
+
+@overload
+def Depends(  # noqa: WPS234
+    dependency: Optional[Callable[..., AsyncContextManager[_T]]] = None,
+    *,
+    use_cache: bool = True,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> _T:  # pragma: no cover
+    ...
 
 
 @overload

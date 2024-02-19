@@ -1,11 +1,12 @@
 import sys
+from contextlib import asynccontextmanager, contextmanager
 
 import pytest
 
 if sys.version_info < (3, 10):
     pytest.skip("Annotated is available only for python 3.10+", allow_module_level=True)
 
-from typing import Annotated, AsyncGenerator, Generic, Tuple, TypeVar
+from typing import Annotated, AsyncGenerator, Generator, Generic, Tuple, TypeVar
 
 from taskiq_dependencies import DependencyGraph, Depends
 
@@ -54,6 +55,38 @@ def test_annotated_generic() -> None:
 
 
 @pytest.mark.anyio
+async def test_annotated_gen() -> None:
+    opened = False
+    closed = False
+
+    def my_gen() -> Generator[int, None, None]:
+        nonlocal opened, closed
+        opened = True
+
+        yield 1
+
+        closed = True
+
+    def test_func(dep: Annotated[int, Depends(my_gen)]) -> int:
+        return dep
+
+    with DependencyGraph(target=test_func).sync_ctx() as sctx:
+        value = test_func(**sctx.resolve_kwargs())
+        assert value == 1
+
+    assert opened and closed
+
+    opened = False
+    closed = False
+
+    async with DependencyGraph(target=test_func).async_ctx() as actx:
+        value = test_func(**(await actx.resolve_kwargs()))
+        assert value == 1
+
+    assert opened and closed
+
+
+@pytest.mark.anyio
 async def test_annotated_asyncgen() -> None:
     opened = False
     closed = False
@@ -65,6 +98,65 @@ async def test_annotated_asyncgen() -> None:
         yield 1
 
         closed = True
+
+    def test_func(dep: Annotated[int, Depends(my_gen)]) -> int:
+        return dep
+
+    async with DependencyGraph(target=test_func).async_ctx() as g:
+        value = test_func(**(await g.resolve_kwargs()))
+        assert value == 1
+
+    assert opened and closed
+
+
+@pytest.mark.anyio
+async def test_annotated_manager() -> None:
+    opened = False
+    closed = False
+
+    @contextmanager
+    def my_gen() -> Generator[int, None, None]:
+        nonlocal opened, closed
+        opened = True
+
+        try:
+            yield 1
+        finally:
+            closed = True
+
+    def test_func(dep: Annotated[int, Depends(my_gen)]) -> int:
+        return dep
+
+    with DependencyGraph(target=test_func).sync_ctx() as sctx:
+        value = test_func(**sctx.resolve_kwargs())
+        assert value == 1
+
+    assert opened and closed
+
+    opened = False
+    closed = False
+
+    async with DependencyGraph(target=test_func).async_ctx() as actx:
+        value = test_func(**(await actx.resolve_kwargs()))
+        assert value == 1
+
+    assert opened and closed
+
+
+@pytest.mark.anyio
+async def test_annotated_asyncmanager() -> None:
+    opened = False
+    closed = False
+
+    @asynccontextmanager
+    async def my_gen() -> AsyncGenerator[int, None]:
+        nonlocal opened, closed
+        opened = True
+
+        try:
+            yield 1
+        finally:
+            closed = True
 
     def test_func(dep: Annotated[int, Depends(my_gen)]) -> int:
         return dep
