@@ -35,10 +35,10 @@ async def test_dependency_async_successful() -> None:
     def testfunc(a: int = Depends(dep1)) -> int:
         return a
 
-    with DependencyGraph(testfunc).sync_ctx({}) as sctx:
-        with pytest.warns(match=re.compile(".*was never awaited.*")):
-            with pytest.raises(RuntimeError):
-                assert sctx.resolve_kwargs() == {"a": 1}
+    with DependencyGraph(testfunc).sync_ctx({}) as sctx, pytest.warns(
+        match=re.compile(".*was never awaited.*"),
+    ), pytest.raises(RuntimeError):
+        assert sctx.resolve_kwargs() == {"a": 1}
 
     async with DependencyGraph(testfunc).async_ctx({}) as actx:
         assert await actx.resolve_kwargs() == {"a": 1}
@@ -51,8 +51,8 @@ async def test_dependency_gen_successful() -> None:
     closes = 0
 
     def dep1() -> Generator[int, None, None]:
-        nonlocal starts  # noqa: WPS420
-        nonlocal closes  # noqa: WPS420
+        nonlocal starts
+        nonlocal closes
 
         starts += 1
 
@@ -85,8 +85,8 @@ async def test_dependency_async_gen_successful() -> None:
     closes = 0
 
     async def dep1() -> AsyncGenerator[int, None]:
-        nonlocal starts  # noqa: WPS420
-        nonlocal closes  # noqa: WPS420
+        nonlocal starts
+        nonlocal closes
 
         starts += 1
 
@@ -97,9 +97,8 @@ async def test_dependency_async_gen_successful() -> None:
     def testfunc(a: int = Depends(dep1)) -> int:
         return a
 
-    with DependencyGraph(testfunc).sync_ctx({}) as sctx:
-        with pytest.raises(RuntimeError):
-            assert sctx.resolve_kwargs() == {"a": 1}
+    with DependencyGraph(testfunc).sync_ctx({}) as sctx, pytest.raises(RuntimeError):
+        assert sctx.resolve_kwargs() == {"a": 1}
 
     async with DependencyGraph(testfunc).async_ctx({}) as actx:
         assert await actx.resolve_kwargs() == {"a": 1}
@@ -116,8 +115,8 @@ async def test_dependency_contextmanager_successful() -> None:
 
     @contextmanager
     def dep1() -> Generator[int, None, None]:
-        nonlocal starts  # noqa: WPS420
-        nonlocal closes  # noqa: WPS420
+        nonlocal starts
+        nonlocal closes
 
         starts += 1
 
@@ -152,8 +151,8 @@ async def test_dependency_async_manager_successful() -> None:
 
     @asynccontextmanager
     async def dep1() -> AsyncGenerator[int, None]:
-        nonlocal starts  # noqa: WPS420
-        nonlocal closes  # noqa: WPS420
+        nonlocal starts
+        nonlocal closes
 
         starts += 1
 
@@ -165,9 +164,8 @@ async def test_dependency_async_manager_successful() -> None:
     def testfunc(a: int = Depends(dep1)) -> int:
         return a
 
-    with DependencyGraph(testfunc).sync_ctx({}) as sctx:
-        with pytest.raises(RuntimeError):
-            assert sctx.resolve_kwargs() == {"a": 1}
+    with DependencyGraph(testfunc).sync_ctx({}) as sctx, pytest.raises(RuntimeError):
+        assert sctx.resolve_kwargs() == {"a": 1}
 
     async with DependencyGraph(testfunc).async_ctx({}) as actx:
         assert await actx.resolve_kwargs() == {"a": 1}
@@ -208,7 +206,7 @@ async def test_dependency_caches() -> None:
     dep_exec = 0
 
     def dep1() -> int:
-        nonlocal dep_exec  # noqa: WPS420
+        nonlocal dep_exec
         dep_exec += 1
 
         return 1
@@ -248,7 +246,7 @@ async def test_dependency_subgraph() -> None:
     dep_exec = 0
 
     def dep1() -> int:
-        nonlocal dep_exec  # noqa: WPS420
+        nonlocal dep_exec
         dep_exec += 1
 
         return 1
@@ -309,7 +307,7 @@ async def test_initial_ctx() -> None:
 def test_unknown_dependency_func() -> None:
     """Tests that error is raised for unknown deps."""
 
-    def target(dep=Depends()) -> None:  # type: ignore
+    def target(dep=Depends()) -> None:  # type: ignore  # noqa: ANN001
         pass
 
     with pytest.raises(ValueError):
@@ -320,7 +318,7 @@ def test_unknown_dependency_class() -> None:
     """Tests that error is raised for unknown deps."""
 
     class Target:
-        def __init__(self, dep=Depends()) -> None:  # type: ignore
+        def __init__(self, dep=Depends()) -> None:  # type: ignore  # noqa: ANN001
             pass
 
     with pytest.raises(ValueError):
@@ -390,11 +388,10 @@ def test_exception_generators() -> None:
             errors_found += 1
 
     def target(_: int = Depends(my_generator)) -> None:
-        raise ValueError()
+        raise ValueError
 
-    with pytest.raises(ValueError):
-        with DependencyGraph(target=target).sync_ctx() as g:
-            target(**g.resolve_kwargs())
+    with pytest.raises(ValueError), DependencyGraph(target=target).sync_ctx() as g:
+        target(**g.resolve_kwargs())
 
     assert errors_found == 1
 
@@ -411,7 +408,7 @@ async def test_async_exception_generators() -> None:
             errors_found += 1
 
     def target(_: int = Depends(my_generator)) -> None:
-        raise ValueError()
+        raise ValueError
 
     with pytest.raises(ValueError):
         async with DependencyGraph(target=target).async_ctx() as g:
@@ -436,7 +433,7 @@ async def test_async_exception_generators_multiple() -> None:
         _b: int = Depends(my_generator, use_cache=False),
         _c: int = Depends(my_generator, use_cache=False),
     ) -> None:
-        raise ValueError()
+        raise ValueError
 
     with pytest.raises(ValueError):
         async with DependencyGraph(target=target).async_ctx() as g:
@@ -453,12 +450,12 @@ async def test_async_exception_in_teardown() -> None:
         nonlocal errors_found
         try:
             yield 1
-        except ValueError:
+        except ValueError as verr:
             errors_found += 1
-            raise Exception()
+            raise Exception from verr
 
     def target(_: int = Depends(my_generator)) -> None:
-        raise ValueError()
+        raise ValueError
 
     with pytest.raises(ValueError):
         async with DependencyGraph(target=target).async_ctx() as g:
@@ -473,12 +470,12 @@ async def test_async_propagation_disabled() -> None:
         nonlocal errors_found
         try:
             yield 1
-        except ValueError:
+        except ValueError as verr:
             errors_found += 1
-            raise Exception()
+            raise Exception from verr
 
     def target(_: int = Depends(my_generator)) -> None:
-        raise ValueError()
+        raise ValueError
 
     with pytest.raises(ValueError):
         async with DependencyGraph(target=target).async_ctx(
@@ -496,16 +493,17 @@ def test_sync_propagation_disabled() -> None:
         nonlocal errors_found
         try:
             yield 1
-        except ValueError:
+        except ValueError as verr:
             errors_found += 1
-            raise Exception()
+            raise Exception from verr
 
     def target(_: int = Depends(my_generator)) -> None:
-        raise ValueError()
+        raise ValueError
 
-    with pytest.raises(ValueError):
-        with DependencyGraph(target=target).sync_ctx(exception_propagation=False) as g:
-            target(**(g.resolve_kwargs()))
+    with pytest.raises(ValueError), DependencyGraph(target=target).sync_ctx(
+        exception_propagation=False,
+    ) as g:
+        target(**(g.resolve_kwargs()))
 
     assert errors_found == 0
 
@@ -621,11 +619,10 @@ def test_generic_classes_nesting() -> None:
 
 def test_generic_class_based_dependencies() -> None:
     """Tests that if ParamInfo is used on the target, no error is raised."""
-
     _T = TypeVar("_T")
 
     class GenericClass(Generic[_T]):
-        def __init__(self, class_val: _T = Depends()):
+        def __init__(self, class_val: _T = Depends()) -> None:
             self.return_val = class_val
 
     def func_dep() -> GenericClass[int]:
@@ -649,7 +646,7 @@ async def test_graph_type_hints() -> None:
         return None
 
     g = DependencyGraph(target=target)
-    for dep_obj in g.subgraphs.keys():
+    for dep_obj in g.subgraphs:
         assert dep_obj.param_name == "class_val"
         assert dep_obj.dependency == dep
         assert dep_obj.signature.name == "class_val"
@@ -664,7 +661,7 @@ async def test_graph_generic_type_hints() -> None:
         return 123
 
     class GenericClass(Generic[_T]):
-        def __init__(self, class_val: int = Depends(dep3)):
+        def __init__(self, class_val: int = Depends(dep3)) -> None:
             self.return_val = class_val
 
     def target(
@@ -673,7 +670,7 @@ async def test_graph_generic_type_hints() -> None:
         return None
 
     g = DependencyGraph(target=target)
-    for dep_obj in g.subgraphs.keys():
+    for dep_obj in g.subgraphs:
         assert dep_obj.param_name == "class_val"
         assert dep_obj.dependency == GenericClass[Tuple[str, int]]
         assert dep_obj.signature.name == "class_val"

@@ -3,9 +3,9 @@ import sys
 from typing import Any, AsyncContextManager, ContextManager, Optional
 
 if sys.version_info >= (3, 10):
-    from typing import TypeGuard  # noqa: WPS433
+    from typing import TypeGuard
 else:
-    from typing_extensions import TypeGuard  # noqa: WPS433
+    from typing_extensions import TypeGuard
 
 
 class ParamInfo:
@@ -38,9 +38,7 @@ def iscontextmanager(obj: Any) -> TypeGuard[ContextManager[Any]]:
     :param obj: object to check.
     :return: bool that indicates whether the object is a context manager or not.
     """
-    if not hasattr(obj, "__enter__"):  # noqa: WPS421
-        return False
-    elif not hasattr(obj, "__exit__"):  # noqa: WPS421
+    if not hasattr(obj, "__enter__") or not hasattr(obj, "__exit__"):
         return False
     return True
 
@@ -52,8 +50,6 @@ def isasynccontextmanager(obj: Any) -> TypeGuard[AsyncContextManager[Any]]:
     :param obj: object to check.
     :return: bool that indicates whether the object is a async context manager or not.
     """
-    if not hasattr(obj, "__aenter__"):  # noqa: WPS421
-        return False
-    elif not hasattr(obj, "__aexit__"):  # noqa: WPS421
+    if not hasattr(obj, "__aenter__") or not hasattr(obj, "__aexit__"):
         return False
     return True

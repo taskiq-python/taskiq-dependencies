@@ -29,7 +29,7 @@ class BaseResolveContext:
         self.initial_cache = initial_cache or {}
         self.propagate_excs = exception_propagation
 
-    def traverse_deps(  # noqa: C901, WPS210
+    def traverse_deps(  # noqa: C901
         self,
     ) -> "Generator[DependencyGraph | Any, None, Dict[str, Any]]":
         """
@@ -117,7 +117,7 @@ class BaseResolveContext:
 
             # We don't want to calculate least function,
             # Because it's a target function.
-            if (  # noqa: WPS337
+            if (
                 index < len(self.graph.ordered_deps) - 1
                 # We skip all ParamInfo dependencies,
                 # because we calculate them when needed.
@@ -147,10 +147,10 @@ class SyncResolveContext(BaseResolveContext):
     def __enter__(self) -> "SyncResolveContext":
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close(*args)
 
-    def close(self, *args: Any) -> None:  # noqa: C901
+    def close(self, *args: Any) -> None:
         """
         Close all opened dependencies.
 
@@ -178,10 +178,10 @@ class SyncResolveContext(BaseResolveContext):
                         )
                         continue
                     continue
-                for _ in dep:  # noqa: WPS328
-                    pass  # noqa: WPS420
+                for _ in dep:
+                    pass
             elif iscontextmanager(dep):
-                dep.__exit__(*args)  # noqa: WPS609
+                dep.__exit__(*args)
 
     def resolver(self, executed_func: Any, initial_cache: Dict[Any, Any]) -> Any:
         """
@@ -196,7 +196,7 @@ class SyncResolveContext(BaseResolveContext):
 
         :return: dict with resolved kwargs.
         """
-        if getattr(executed_func, "dep_graph", False):  # noqa: WPS223
+        if getattr(executed_func, "dep_graph", False):
             ctx = SyncResolveContext(executed_func, initial_cache)
             self.sub_contexts.append(ctx)
             sub_result = ctx.resolve_kwargs()
@@ -209,7 +209,7 @@ class SyncResolveContext(BaseResolveContext):
                 "Please use async context instead.",
             )
         elif iscontextmanager(executed_func):
-            sub_result = executed_func.__enter__()  # noqa: WPS609
+            sub_result = executed_func.__enter__()
             self.opened_dependencies.append(executed_func)
         elif inspect.isasyncgen(executed_func) or isasynccontextmanager(executed_func):
             raise RuntimeError(
@@ -234,7 +234,7 @@ class SyncResolveContext(BaseResolveContext):
         try:
             generator = self.traverse_deps()
             dependency = generator.send(None)
-            while True:  # noqa: WPS457
+            while True:
                 kwargs = self.resolver(dependency, self.initial_cache)
                 dependency = generator.send(kwargs)
         except StopIteration as exc:
@@ -255,7 +255,7 @@ class AsyncResolveContext(BaseResolveContext):
     async def __aenter__(self) -> "AsyncResolveContext":
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close(*args)
 
     async def close(self, *args: Any) -> None:  # noqa: C901
@@ -286,8 +286,8 @@ class AsyncResolveContext(BaseResolveContext):
                         )
                         continue
                     continue
-                for _ in dep:  # noqa: WPS328
-                    pass  # noqa: WPS420
+                for _ in dep:
+                    pass
             elif inspect.isasyncgen(dep):
                 if exception_found:
                     try:
@@ -302,14 +302,14 @@ class AsyncResolveContext(BaseResolveContext):
                         )
                         continue
                     continue
-                async for _ in dep:  # noqa: WPS328
-                    pass  # noqa: WPS420
+                async for _ in dep:
+                    pass
             elif iscontextmanager(dep):
-                dep.__exit__(*args)  # noqa: WPS609
+                dep.__exit__(*args)
             elif isasynccontextmanager(dep):
-                await dep.__aexit__(*args)  # noqa: WPS609
+                await dep.__aexit__(*args)
 
-    async def resolver(  # noqa: C901
+    async def resolver(
         self,
         executed_func: Any,
         initial_cache: Dict[Any, Any],
@@ -324,7 +324,7 @@ class AsyncResolveContext(BaseResolveContext):
         :param initial_cache: cache to build a context if graph was passed.
         :return: dict with resolved kwargs.
         """
-        if getattr(executed_func, "dep_graph", False):  # noqa: WPS223
+        if getattr(executed_func, "dep_graph", False):
             ctx = AsyncResolveContext(executed_func, initial_cache)  # type: ignore
             self.sub_contexts.append(ctx)
             sub_result = await ctx.resolve_kwargs()
@@ -334,13 +334,13 @@ class AsyncResolveContext(BaseResolveContext):
         elif asyncio.iscoroutine(executed_func):
             sub_result = await executed_func
         elif inspect.isasyncgen(executed_func):
-            sub_result = await executed_func.__anext__()  # noqa: WPS609
+            sub_result = await executed_func.__anext__()
             self.opened_dependencies.append(executed_func)
         elif iscontextmanager(executed_func):
-            sub_result = executed_func.__enter__()  # noqa: WPS609
+            sub_result = executed_func.__enter__()
             self.opened_dependencies.append(executed_func)
         elif isasynccontextmanager(executed_func):
-            sub_result = await executed_func.__aenter__()  # noqa: WPS609
+            sub_result = await executed_func.__aenter__()
             self.opened_dependencies.append(executed_func)
         else:
             sub_result = executed_func
@@ -360,7 +360,7 @@ class AsyncResolveContext(BaseResolveContext):
         try:
             generator = self.traverse_deps()
             dependency = generator.send(None)
-            while True:  # noqa: WPS457
+            while True:
                 kwargs = await self.resolver(dependency, self.initial_cache)
                 dependency = generator.send(kwargs)
         except StopIteration as exc:
