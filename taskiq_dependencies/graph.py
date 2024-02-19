@@ -1,14 +1,15 @@
 import inspect
 import sys
 from collections import defaultdict, deque
-from graphlib import TopologicalSorter
 from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
+
+from graphlib import TopologicalSorter
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
 
 try:
-    from fastapi.params import Depends as FastapiDepends  # noqa: WPS433
+    from fastapi.params import Depends as FastapiDepends
 except ImportError:
     FastapiDepends = None
 
@@ -93,7 +94,7 @@ class DependencyGraph:
             exception_propagation,
         )
 
-    def _build_graph(self) -> None:  # noqa: C901, WPS210
+    def _build_graph(self) -> None:  # noqa: C901
         """
         Builds actual graph.
 
@@ -140,8 +141,8 @@ class DependencyGraph:
                 if parent_cls_origin is None:
                     raise ValueError(
                         f"Unknown generic argument {origin}. "
-                        + f"Please provide a type in param `{dep.parent.param_name}`"
-                        + f" of `{dep.parent.dependency}`",
+                        f"Please provide a type in param `{dep.parent.param_name}`"
+                        f" of `{dep.parent.dependency}`",
                     )
                 # We zip together names of parameters and the substituted values
                 # for generics.
@@ -161,9 +162,9 @@ class DependencyGraph:
             if inspect.isclass(origin):
                 # If this is a class, we need to get signature of
                 # an __init__ method.
-                hints = get_type_hints(origin.__init__)  # noqa: WPS609
+                hints = get_type_hints(origin.__init__)
                 sign = inspect.signature(
-                    origin.__init__,  # noqa: WPS609
+                    origin.__init__,
                     **signature_kwargs,
                 )
             elif inspect.isfunction(dep.dependency):
@@ -172,7 +173,7 @@ class DependencyGraph:
                 sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
             else:
                 hints = get_type_hints(
-                    dep.dependency.__call__,  # type: ignore # noqa: WPS609
+                    dep.dependency.__call__,  # type: ignore
                 )
                 sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
 
@@ -181,7 +182,7 @@ class DependencyGraph:
             # default vaule.
             for param_name, param in sign.parameters.items():
                 default_value = param.default
-                if hasattr(param.annotation, "__metadata__"):  # noqa: WPS421
+                if hasattr(param.annotation, "__metadata__"):
                     # We go backwards,
                     # because you may want to override your annotation
                     # and the overriden value will appear to be after
@@ -190,7 +191,7 @@ class DependencyGraph:
                         if isinstance(meta, Dependency):
                             default_value = meta
                             break
-                        if FastapiDepends is not None and isinstance(  # noqa: WPS337
+                        if FastapiDepends is not None and isinstance(
                             meta,
                             FastapiDepends,
                         ):
@@ -199,7 +200,7 @@ class DependencyGraph:
 
                 # This is for FastAPI integration. So you can
                 # use Depends from taskiq mixed with fastapi's dependencies.
-                if FastapiDepends is not None and isinstance(  # noqa: WPS337
+                if FastapiDepends is not None and isinstance(
                     default_value,
                     FastapiDepends,
                 ):
