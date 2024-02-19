@@ -1,9 +1,11 @@
 import inspect
 import uuid
-from typing import (  # noqa: WPS235
+from typing import (
     Any,
+    AsyncContextManager,
     AsyncGenerator,
     Callable,
+    ContextManager,
     Coroutine,
     Dict,
     Generator,
@@ -14,11 +16,31 @@ from typing import (  # noqa: WPS235
     overload,
 )
 
-_T = TypeVar("_T")  # noqa: WPS111
+_T = TypeVar("_T")
 
 
 @overload
-def Depends(  # noqa: WPS234
+def Depends(
+    dependency: Optional[Callable[..., ContextManager[_T]]] = None,
+    *,
+    use_cache: bool = True,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> _T:  # pragma: no cover
+    ...
+
+
+@overload
+def Depends(
+    dependency: Optional[Callable[..., AsyncContextManager[_T]]] = None,
+    *,
+    use_cache: bool = True,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> _T:  # pragma: no cover
+    ...
+
+
+@overload
+def Depends(
     dependency: Optional[Callable[..., AsyncGenerator[_T, None]]] = None,
     *,
     use_cache: bool = True,
@@ -28,7 +50,7 @@ def Depends(  # noqa: WPS234
 
 
 @overload
-def Depends(  # noqa: WPS234
+def Depends(
     dependency: Optional[Callable[..., Generator[_T, None, None]]] = None,
     *,
     use_cache: bool = True,
@@ -48,7 +70,7 @@ def Depends(
 
 
 @overload
-def Depends(  # noqa: WPS234
+def Depends(
     dependency: Optional[Callable[..., Coroutine[Any, Any, _T]]] = None,
     *,
     use_cache: bool = True,
@@ -102,7 +124,7 @@ class Dependency:
     and calculate before execution.
     """
 
-    def __init__(  # noqa: WPS211, WPS234
+    def __init__(
         self,
         dependency: Optional[Union[Type[Any], Callable[..., Any]]] = None,
         *,
@@ -134,4 +156,4 @@ class Dependency:
         """
         if not isinstance(rhs, Dependency):
             return False
-        return self._id == rhs._id  # noqa: WPS437
+        return self._id == rhs._id
