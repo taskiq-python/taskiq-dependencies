@@ -216,3 +216,74 @@ def test_override() -> None:
         assert id(value[0]) != id(value[1])
         assert isinstance(value[0], TestClass)
         assert isinstance(value[1], TestClass)
+
+
+def test_skip_not_decorated_managers() -> None:
+    """
+    Test that synct context skip context managers.
+
+    Tests that even is class implements a context manager,
+    it won't be called during the context resolution,
+    because it's not annotated with contextmanager decorator.
+    """
+
+    class TestCM:
+        def __init__(self) -> None:
+            self.opened = False
+
+        def __enter__(self) -> None:
+            self.opened = True
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+    test_cm = TestCM()
+
+    def get_test_cm() -> TestCM:
+        nonlocal test_cm
+        return test_cm
+
+    def target(cm: Annotated[TestCM, Depends(get_test_cm)]) -> None:
+        pass
+
+    graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as ctx:
+        kwargs = ctx.resolve_kwargs()
+        assert kwargs["cm"] == test_cm
+        assert not test_cm.opened
+
+
+@pytest.mark.anyio
+async def test_skip_not_decorated_async_managers() -> None:
+    """
+    Test that synct context skip context managers.
+
+    Tests that even is class implements a context manager,
+    it won't be called during the context resolution,
+    because it's not annotated with contextmanager decorator.
+    """
+
+    class TestACM:
+        def __init__(self) -> None:
+            self.opened = False
+
+        async def __aenter__(self) -> None:
+            self.opened = True
+
+        async def __aexit__(self, *args: object) -> None:
+            pass
+
+    test_acm = TestACM()
+
+    def get_test_acm() -> TestACM:
+        nonlocal test_acm
+        return test_acm
+
+    def target(acm: Annotated[TestACM, Depends(get_test_acm)]) -> None:
+        pass
+
+    graph = DependencyGraph(target=target)
+    async with graph.async_ctx() as ctx:
+        kwargs = await ctx.resolve_kwargs()
+        assert kwargs["acm"] == test_acm
+        assert not test_acm.opened
