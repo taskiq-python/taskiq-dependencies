@@ -1,11 +1,10 @@
 import inspect
 import uuid
+from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager
 from typing import (
     Any,
-    AsyncContextManager,
     AsyncGenerator,
     Callable,
-    ContextManager,
     Coroutine,
     Dict,
     Generator,
@@ -21,7 +20,7 @@ _T = TypeVar("_T")
 
 @overload
 def Depends(
-    dependency: Optional[Callable[..., ContextManager[_T]]] = None,
+    dependency: Optional[Callable[..., "_GeneratorContextManager[_T]"]] = None,
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
@@ -31,7 +30,7 @@ def Depends(
 
 @overload
 def Depends(
-    dependency: Optional[Callable[..., AsyncContextManager[_T]]] = None,
+    dependency: Optional[Callable[..., "_AsyncGeneratorContextManager[_T]"]] = None,
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
