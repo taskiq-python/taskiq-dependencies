@@ -1,6 +1,6 @@
 import inspect
 import sys
-from contextlib import AsyncContextDecorator, ContextDecorator
+from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager
 from typing import Any, AsyncContextManager, ContextManager, Optional
 
 if sys.version_info >= (3, 10):
@@ -39,7 +39,7 @@ def iscontextmanager(obj: Any) -> TypeGuard[ContextManager[Any]]:
     :param obj: object to check.
     :return: bool that indicates whether the object is a context manager or not.
     """
-    return issubclass(obj.__class__, ContextDecorator)
+    return issubclass(obj.__class__, _GeneratorContextManager)
 
 
 def isasynccontextmanager(obj: Any) -> TypeGuard[AsyncContextManager[Any]]:
@@ -49,4 +49,4 @@ def isasynccontextmanager(obj: Any) -> TypeGuard[AsyncContextManager[Any]]:
     :param obj: object to check.
     :return: bool that indicates whether the object is a async context manager or not.
     """
-    return issubclass(obj.__class__, AsyncContextDecorator)
+    return issubclass(obj.__class__, _AsyncGeneratorContextManager)
