@@ -7,6 +7,7 @@ from graphlib import TopologicalSorter
 
 from taskiq_dependencies.ctx import AsyncResolveContext, SyncResolveContext
 from taskiq_dependencies.dependency import Dependency
+from taskiq_dependencies.utils import ParamInfo
 
 try:
     from fastapi.params import Depends as FastapiDepends
@@ -64,6 +65,7 @@ class DependencyGraph:
             graph = DependencyGraph(self.target, replaced_deps)
         return AsyncResolveContext(
             graph,
+            graph,
             initial_cache,
             exception_propagation,
         )
@@ -89,6 +91,7 @@ class DependencyGraph:
         if replaced_deps:
             graph = DependencyGraph(self.target, replaced_deps)
         return SyncResolveContext(
+            graph,
             graph,
             initial_cache,
             exception_propagation,
@@ -122,8 +125,14 @@ class DependencyGraph:
                 continue
             if dep.dependency is None:
                 continue
+            # If we have replaced dependencies, we need to replace
+            # them in the current dependency.
             if self.replaced_deps and dep.dependency in self.replaced_deps:
                 dep.dependency = self.replaced_deps[dep.dependency]
+            # We can say for sure that ParamInfo doesn't have any dependencies,
+            # so we skip it.
+            if dep.dependency == ParamInfo:
+                continue
             # Get signature and type hints.
             origin = getattr(dep.dependency, "__origin__", None)
             if origin is None:

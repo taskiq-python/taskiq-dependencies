@@ -20,10 +20,13 @@ class BaseResolveContext:
     def __init__(
         self,
         graph: "DependencyGraph",
+        main_graph: "DependencyGraph",
         initial_cache: Optional[Dict[Any, Any]] = None,
         exception_propagation: bool = True,
     ) -> None:
         self.graph = graph
+        # Main graph that contains all the subgraphs.
+        self.main_graph = main_graph
         self.opened_dependencies: List[Any] = []
         self.sub_contexts: "List[Any]" = []
         self.initial_cache = initial_cache or {}
@@ -89,7 +92,11 @@ class BaseResolveContext:
                 # If the user want to get ParamInfo,
                 # we get declaration of the current dependency.
                 if subdep.dependency == ParamInfo:
-                    kwargs[subdep.param_name] = ParamInfo(dep.param_name, dep.signature)
+                    kwargs[subdep.param_name] = ParamInfo(
+                        dep.param_name,
+                        self.main_graph,
+                        dep.signature,
+                    )
                     continue
                 if subdep.use_cache:
                     # If this dependency can be calculated, using cache,
@@ -197,7 +204,7 @@ class SyncResolveContext(BaseResolveContext):
         :return: dict with resolved kwargs.
         """
         if getattr(executed_func, "dep_graph", False):
-            ctx = SyncResolveContext(executed_func, initial_cache)
+            ctx = SyncResolveContext(executed_func, self.main_graph, initial_cache)
             self.sub_contexts.append(ctx)
             sub_result = ctx.resolve_kwargs()
         elif inspect.isgenerator(executed_func):
@@ -325,7 +332,7 @@ class AsyncResolveContext(BaseResolveContext):
         :return: dict with resolved kwargs.
         """
         if getattr(executed_func, "dep_graph", False):
-            ctx = AsyncResolveContext(executed_func, initial_cache)  # type: ignore
+            ctx = AsyncResolveContext(executed_func, self.main_graph, initial_cache)  # type: ignore
             self.sub_contexts.append(ctx)
             sub_result = await ctx.resolve_kwargs()
         elif inspect.isgenerator(executed_func):

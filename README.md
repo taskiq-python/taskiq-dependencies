@@ -127,6 +127,8 @@ with graph.sync_ctx() as ctx:
 The ParamInfo has the information about name and parameters signature. It's useful if you want to create a dependency that changes based on parameter name, or signature.
 
 
+Also ParamInfo contains the initial graph that was used.
+
 ## Exception propagation
 
 By default if error happens within the context, we send this error to the dependency,

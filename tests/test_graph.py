@@ -334,13 +334,15 @@ def test_get_param_info() -> None:
     def target(my_test_param: ParamInfo = Depends(dep)) -> None:
         return None
 
-    with DependencyGraph(target=target).sync_ctx() as g:
+    graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as g:
         kwargs = g.resolve_kwargs()
 
     info: ParamInfo = kwargs["my_test_param"]
     assert info.name == "my_test_param"
     assert info.definition
     assert info.definition.annotation == ParamInfo
+    assert info.graph == graph
 
 
 def test_param_info_no_dependant() -> None:
@@ -349,12 +351,14 @@ def test_param_info_no_dependant() -> None:
     def target(info: ParamInfo = Depends()) -> None:
         return None
 
-    with DependencyGraph(target=target).sync_ctx() as g:
+    graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as g:
         kwargs = g.resolve_kwargs()
 
     info: ParamInfo = kwargs["info"]
     assert info.name == ""
     assert info.definition is None
+    assert info.graph == graph
 
 
 def test_class_based_dependencies() -> None:
@@ -863,3 +867,27 @@ async def test_skip_not_decorated_async_managers() -> None:
         kwargs = await ctx.resolve_kwargs()
         assert kwargs["acm"] == test_acm
         assert not test_acm.opened
+
+
+def test_param_info_subgraph() -> None:
+    """
+    Test subgraphs for ParamInfo.
+
+    Test that correct graph is stored in ParamInfo
+    even if evaluated from subgraphs.
+    """
+
+    def inner_dep(info: ParamInfo = Depends()) -> ParamInfo:
+        return info
+
+    def target(info: ParamInfo = Depends(inner_dep, use_cache=False)) -> None:
+        return None
+
+    graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as g:
+        kwargs = g.resolve_kwargs()
+
+    info: ParamInfo = kwargs["info"]
+    assert info.name == ""
+    assert info.definition is None
+    assert info.graph == graph
