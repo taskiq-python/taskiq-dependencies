@@ -1,12 +1,15 @@
 import inspect
 import sys
 from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager
-from typing import Any, AsyncContextManager, ContextManager, Optional
+from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, Optional
 
 if sys.version_info >= (3, 10):
     from typing import TypeGuard
 else:
     from typing_extensions import TypeGuard
+
+if TYPE_CHECKING:
+    from taskiq_dependencies.graph import DependencyGraph
 
 
 class ParamInfo:
@@ -23,9 +26,11 @@ class ParamInfo:
     def __init__(
         self,
         name: str,
+        graph: "DependencyGraph",
         signature: Optional[inspect.Parameter] = None,
     ) -> None:
         self.name = name
+        self.graph = graph
         self.definition = signature
 
     def __repr__(self) -> str:

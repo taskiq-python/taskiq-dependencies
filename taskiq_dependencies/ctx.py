@@ -89,7 +89,11 @@ class BaseResolveContext:
                 # If the user want to get ParamInfo,
                 # we get declaration of the current dependency.
                 if subdep.dependency == ParamInfo:
-                    kwargs[subdep.param_name] = ParamInfo(dep.param_name, dep.signature)
+                    kwargs[subdep.param_name] = ParamInfo(
+                        dep.param_name,
+                        self.graph,
+                        dep.signature,
+                    )
                     continue
                 if subdep.use_cache:
                     # If this dependency can be calculated, using cache,
