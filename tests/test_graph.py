@@ -650,7 +650,7 @@ async def test_graph_type_hints() -> None:
         assert dep_obj.param_name == "class_val"
         assert dep_obj.dependency == dep
         assert dep_obj.signature.name == "class_val"
-        assert dep_obj.signature.annotation == int
+        assert dep_obj.signature.annotation == int  # noqa: E721
 
 
 @pytest.mark.anyio
