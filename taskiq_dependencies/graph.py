@@ -65,6 +65,7 @@ class DependencyGraph:
             graph = DependencyGraph(self.target, replaced_deps)
         return AsyncResolveContext(
             graph,
+            graph,
             initial_cache,
             exception_propagation,
         )
@@ -90,6 +91,7 @@ class DependencyGraph:
         if replaced_deps:
             graph = DependencyGraph(self.target, replaced_deps)
         return SyncResolveContext(
+            graph,
             graph,
             initial_cache,
             exception_propagation,
