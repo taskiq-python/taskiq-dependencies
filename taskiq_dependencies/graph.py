@@ -1,6 +1,9 @@
 import inspect
+import os
 import sys
+import warnings
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
 
 from graphlib import TopologicalSorter
@@ -171,19 +174,64 @@ class DependencyGraph:
             if inspect.isclass(origin):
                 # If this is a class, we need to get signature of
                 # an __init__ method.
-                hints = get_type_hints(origin.__init__)
+                try:
+                    hints = get_type_hints(origin.__init__)
+                except NameError:
+                    _, src_lineno = inspect.getsourcelines(dep.dependency)
+                    src_file = Path(inspect.getfile(dep.dependency)).relative_to(
+                        Path.cwd(),
+                    )
+                    warnings.warn(
+                        "Cannot resolve type hints for "
+                        f"a class {dep.dependency.__name__} defined "
+                        f"at {src_file}:{src_lineno}.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    continue
                 sign = inspect.signature(
                     origin.__init__,
                     **signature_kwargs,
                 )
             elif inspect.isfunction(dep.dependency):
                 # If this is function or an instance of a class, we get it's type hints.
-                hints = get_type_hints(dep.dependency)
+                try:
+                    hints = get_type_hints(dep.dependency)
+                except NameError:
+                    _, src_lineno = inspect.getsourcelines(dep.dependency)
+                    src_file = Path(inspect.getfile(dep.dependency)).relative_to(
+                        Path.cwd(),
+                    )
+                    warnings.warn(
+                        "Cannot resolve type hints for "
+                        f"a function {dep.dependency.__name__} defined "
+                        f"at {src_file}:{src_lineno}.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    continue
                 sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
             else:
-                hints = get_type_hints(
-                    dep.dependency.__call__,  # type: ignore
-                )
+                try:
+                    hints = get_type_hints(
+                        dep.dependency.__call__,  # type: ignore
+                    )
+                except NameError:
+                    _, src_lineno = inspect.getsourcelines(dep.dependency.__class__)
+                    src_file = Path(
+                        inspect.getfile(dep.dependency.__class__),
+                    ).relative_to(
+                        Path.cwd(),
+                    )
+                    cls_name = dep.dependency.__class__.__name__
+                    warnings.warn(
+                        "Cannot resolve type hints for "
+                        f"an object of class {cls_name} defined "
+                        f"at {src_file}:{src_lineno}.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    continue
                 sign = inspect.signature(origin, **signature_kwargs)  # type: ignore
 
             # Now we need to iterate over parameters, to

@@ -156,3 +156,15 @@ class Dependency:
         if not isinstance(rhs, Dependency):
             return False
         return self._id == rhs._id
+
+    def __repr__(self) -> str:
+        func_name = str(self.dependency)
+        if self.dependency is not None and hasattr(self.dependency, "__name__"):
+            func_name = self.dependency.__name__
+        return (
+            f"Dependency({func_name}, "
+            f"use_cache={self.use_cache}, "
+            f"kwargs={self.kwargs}, "
+            f"parent={self.parent}"
+            ")"
+        )
