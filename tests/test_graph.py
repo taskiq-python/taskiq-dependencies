@@ -1,7 +1,15 @@
 import re
 import uuid
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, Generator, Generic, Tuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Generator,
+    Generic,
+    Tuple,
+    TypeVar,
+)
 
 import pytest
 
@@ -891,3 +899,56 @@ def test_param_info_subgraph() -> None:
     assert info.name == ""
     assert info.definition is None
     assert info.graph == graph
+
+
+def test_skip_type_checking_function() -> None:
+    """Test if we can skip type only for type checking for the function."""
+    if TYPE_CHECKING:
+
+        class A:
+            pass
+
+    def target(unknown: "A") -> None:
+        pass
+
+    with pytest.warns(RuntimeWarning, match=r"Cannot resolve.*function target.*"):
+        graph = DependencyGraph(target=target)
+    with graph.sync_ctx() as ctx:
+        assert "unknown" not in ctx.resolve_kwargs()
+
+
+def test_skip_type_checking_class() -> None:
+    """Test if we can skip type only for type checking for the function."""
+    if TYPE_CHECKING:
+
+        class A:
+            pass
+
+    class Target:
+        def __init__(self, unknown: "A") -> None:
+            pass
+
+    with pytest.warns(RuntimeWarning, match=r"Cannot resolve.*class Target.*"):
+        graph = DependencyGraph(target=Target)
+    with graph.sync_ctx() as ctx:
+        assert "unknown" not in ctx.resolve_kwargs()
+
+
+def test_skip_type_checking_object() -> None:
+    """Test if we can skip type only for type checking for the function."""
+    if TYPE_CHECKING:
+
+        class A:
+            pass
+
+    class Target:
+        def __call__(self, unknown: "A") -> None:
+            pass
+
+    with pytest.warns(
+        RuntimeWarning,
+        match=r"Cannot resolve.*object of class Target.*",
+    ):
+        graph = DependencyGraph(target=Target())
+    with graph.sync_ctx() as ctx:
+        assert "unknown" not in ctx.resolve_kwargs()
