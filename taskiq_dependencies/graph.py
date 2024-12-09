@@ -1,5 +1,4 @@
 import inspect
-import os
 import sys
 import warnings
 from collections import defaultdict, deque
@@ -177,13 +176,13 @@ class DependencyGraph:
                 try:
                     hints = get_type_hints(origin.__init__)
                 except NameError:
-                    _, src_lineno = inspect.getsourcelines(dep.dependency)
-                    src_file = Path(inspect.getfile(dep.dependency)).relative_to(
+                    _, src_lineno = inspect.getsourcelines(origin)
+                    src_file = Path(inspect.getfile(origin)).relative_to(
                         Path.cwd(),
                     )
                     warnings.warn(
                         "Cannot resolve type hints for "
-                        f"a class {dep.dependency.__name__} defined "
+                        f"a class {origin.__name__} defined "
                         f"at {src_file}:{src_lineno}.",
                         RuntimeWarning,
                         stacklevel=2,
@@ -198,7 +197,7 @@ class DependencyGraph:
                 try:
                     hints = get_type_hints(dep.dependency)
                 except NameError:
-                    _, src_lineno = inspect.getsourcelines(dep.dependency)
+                    _, src_lineno = inspect.getsourcelines(dep.dependency)  # type: ignore
                     src_file = Path(inspect.getfile(dep.dependency)).relative_to(
                         Path.cwd(),
                     )

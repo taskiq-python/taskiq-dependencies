@@ -1,4 +1,3 @@
-from collections import UserString
 import re
 import uuid
 from contextlib import asynccontextmanager, contextmanager
