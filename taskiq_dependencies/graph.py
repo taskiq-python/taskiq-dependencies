@@ -177,9 +177,10 @@ class DependencyGraph:
                     hints = get_type_hints(origin.__init__)
                 except NameError:
                     _, src_lineno = inspect.getsourcelines(origin)
-                    src_file = Path(inspect.getfile(origin)).relative_to(
-                        Path.cwd(),
-                    )
+                    src_file = Path(inspect.getfile(origin))
+                    cwd = Path.cwd()
+                    if src_file.is_relative_to(cwd):
+                        src_file = src_file.relative_to(cwd)
                     warnings.warn(
                         "Cannot resolve type hints for "
                         f"a class {origin.__name__} defined "
@@ -198,9 +199,10 @@ class DependencyGraph:
                     hints = get_type_hints(dep.dependency)
                 except NameError:
                     _, src_lineno = inspect.getsourcelines(dep.dependency)  # type: ignore
-                    src_file = Path(inspect.getfile(dep.dependency)).relative_to(
-                        Path.cwd(),
-                    )
+                    src_file = Path(inspect.getfile(dep.dependency))
+                    cwd = Path.cwd()
+                    if src_file.is_relative_to(cwd):
+                        src_file = src_file.relative_to(cwd)
                     warnings.warn(
                         "Cannot resolve type hints for "
                         f"a function {dep.dependency.__name__} defined "
@@ -217,11 +219,10 @@ class DependencyGraph:
                     )
                 except NameError:
                     _, src_lineno = inspect.getsourcelines(dep.dependency.__class__)
-                    src_file = Path(
-                        inspect.getfile(dep.dependency.__class__),
-                    ).relative_to(
-                        Path.cwd(),
-                    )
+                    src_file = Path(inspect.getfile(dep.dependency.__class__))
+                    cwd = Path.cwd()
+                    if src_file.is_relative_to(cwd):
+                        src_file = src_file.relative_to(cwd)
                     cls_name = dep.dependency.__class__.__name__
                     warnings.warn(
                         "Cannot resolve type hints for "
