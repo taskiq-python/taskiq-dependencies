@@ -71,7 +71,7 @@ def Depends(
 
 @overload
 def Depends(
-    dependency: Optional[Callable[..., CoroutineType[Any, Any, _T]]] = None,
+    dependency: Optional[Callable[..., "CoroutineType[Any, Any, _T]"]] = None,
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
