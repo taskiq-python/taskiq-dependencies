@@ -1,11 +1,12 @@
 import inspect
 import uuid
+from collections.abc import Coroutine
 from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager
+from types import CoroutineType
 from typing import (
     Any,
     AsyncGenerator,
     Callable,
-    Coroutine,
     Dict,
     Generator,
     Optional,
@@ -61,6 +62,16 @@ def Depends(
 @overload
 def Depends(
     dependency: Optional[Type[_T]] = None,
+    *,
+    use_cache: bool = True,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> _T:  # pragma: no cover
+    ...
+
+
+@overload
+def Depends(
+    dependency: Optional[Callable[..., CoroutineType[Any, Any, _T]]] = None,
     *,
     use_cache: bool = True,
     kwargs: Optional[Dict[str, Any]] = None,
